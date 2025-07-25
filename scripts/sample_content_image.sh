@@ -3,7 +3,7 @@ python sample.py \
     --content_image_path="data_examples/sampling/example_content.jpg" \
     --style_image_path="data_examples/sampling/example_style.jpg" \
     --save_image \
-    --save_image_dir="outputs/" \
+    --save_image_dir="/kaggle/working/outputs" \
     --device="cuda:0" \
     --algorithm_type="dpmsolver++" \
     --guidance_type="classifier-free" \

@@ -4,7 +4,7 @@ python sample.py \
     --save_image \
     --character_input \
     --content_character="隆" \
-    --save_image_dir="outputs/" \
+    --save_image_dir="/kaggle/working/outputs" \
     --device="cuda:0" \
     --algorithm_type="dpmsolver++" \
     --guidance_type="classifier-free" \
