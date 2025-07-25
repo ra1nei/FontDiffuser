@@ -1,5 +1,5 @@
 python sample.py \
-    --ckpt_dir="kaggle/input/fontdiffuser-ckp/" \
+    --ckpt_dir="/kaggle/input/fontdiffuser-ckp" \
     --style_image_path="data_examples/sampling/example_style.jpg" \
     --save_image \
     --character_input \
