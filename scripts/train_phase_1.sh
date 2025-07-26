@@ -1,8 +1,8 @@
 accelerate launch train.py \
     --seed=123 \
     --experience_name="FontDiffuser_training_phase_1" \
-    --data_root="data_examples" \
-    --output_dir="outputs/FontDiffuser" \
+    --data_root="./data_examples" \
+    --output_dir="../outputs/FontDiffuser" \
     --report_to="tensorboard" \
     --resolution=96 \
     --style_image_size=96 \
