@@ -6,7 +6,7 @@ from diffusers import ModelMixin
 from diffusers.configuration_utils import (ConfigMixin, 
                                            register_to_config)
 
-from modules.dit import DiTModel
+# from modules.dit import DiTModel
 
 class FontDiffuserModel(ModelMixin, ConfigMixin):
     """Forward function for FontDiffuer with content encoder \
@@ -16,16 +16,16 @@ class FontDiffuserModel(ModelMixin, ConfigMixin):
     @register_to_config
     def __init__(
         self, 
-        # unet, 
-        ### TODO
-        dit_model: DiTModel,
+        unet, 
+        # ### TODO
+        # dit_model: DiTModel,
         style_encoder,
         content_encoder,
     ):
         super().__init__()
-        # self.unet = unet 
-        ### TODO
-        self.dit_model = dit_model
+        self.unet = unet 
+        # ### TODO
+        # self.dit_model = dit_model
         self.style_encoder = style_encoder
         self.content_encoder = content_encoder
     
@@ -52,28 +52,28 @@ class FontDiffuserModel(ModelMixin, ConfigMixin):
         input_hidden_states = [style_img_feature, content_residual_features, \
                                style_hidden_states, style_content_res_features]
 
-        # out = self.unet(
-        #     x_t, 
-        #     timesteps, 
-        #     encoder_hidden_states=input_hidden_states,
-        #     content_encoder_downsample_size=content_encoder_downsample_size,
-        # )
-
-        ### TODO
-        cond_input_for_dit = style_hidden_states
-        out = self.dit_model(
-            x=x_t,
-            t=timesteps,
-            cond=cond_input_for_dit,
+        out = self.unet(
+            x_t, 
+            timesteps, 
+            encoder_hidden_states=input_hidden_states,
+            content_encoder_downsample_size=content_encoder_downsample_size,
         )
+
+        # ### TODO
+        # cond_input_for_dit = style_hidden_states
+        # out = self.dit_model(
+        #     x=x_t,
+        #     t=timesteps,
+        #     cond=cond_input_for_dit,
+        # )
         noise_pred = out[0]
         offset_out_sum = out[1]
         
-        ### TODO
-        noise_pred = out
-        return noise_pred
+        # ### TODO
+        # noise_pred = out
+        # return noise_pred
 
-        # return noise_pred, offset_out_sum
+        return noise_pred, offset_out_sum
 
 
 class FontDiffuserModelDPM(ModelMixin, ConfigMixin):
