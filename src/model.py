@@ -69,6 +69,7 @@ class FontDiffuserModel(ModelMixin, ConfigMixin):
         noise_pred = out[0]
         offset_out_sum = out[1]
         
+        ### TODO
         noise_pred = out
         return noise_pred
 
