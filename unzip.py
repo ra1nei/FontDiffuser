@@ -1,10 +1,25 @@
-import zipfile
 import os
+import zipfile
 
-zip_path = "thesis-data.zip"
-extract_dir = "thesis-data"
+def main():
+    zip_filename = "thesis-data.zip"
+    extract_dir = "thesis-data"
 
-with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-    zip_ref.extractall(extract_dir)
+    # Lấy đường dẫn tuyệt đối đến file zip
+    zip_path = os.path.join(os.path.dirname(__file__), zip_filename)
 
-print("✅ Unzipped successfully into:", extract_dir)
+    # Kiểm tra file zip có tồn tại không
+    if not os.path.exists(zip_path):
+        print(f"❌ File zip không tồn tại: {zip_path}")
+        return
+
+    # Giải nén
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+        print(f"✅ Unzipped successfully into: {extract_dir}")
+    except zipfile.BadZipFile:
+        print("❌ Lỗi: File không phải là một tệp .zip hợp lệ.")
+
+if __name__ == "__main__":
+    main()
