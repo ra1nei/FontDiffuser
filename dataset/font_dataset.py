@@ -8,12 +8,10 @@ import torchvision.transforms as transforms
 
 
 def get_nonorm_transform(resolution):
-    nonorm_transform = transforms.Compose([
-        transforms.Resize((resolution, resolution),
-                          interpolation=transforms.InterpolationMode.BILINEAR),
+    return transforms.Compose([
+        transforms.Resize((resolution, resolution), interpolation=transforms.InterpolationMode.BILINEAR),
         transforms.ToTensor()
     ])
-    return nonorm_transform
 
 
 class FontDataset(Dataset):
@@ -33,11 +31,12 @@ class FontDataset(Dataset):
     def get_path(self):
         self.target_images = []
         self.style_to_images = {}
-        target_image_dir = f"{self.root}/{self.phase}/TargetImage"
+        target_image_dir = os.path.join(self.root, self.phase, "TargetImage")
         for style in os.listdir(target_image_dir):
             images_related_style = []
-            for img in os.listdir(f"{target_image_dir}/{style}"):
-                img_path = f"{target_image_dir}/{style}/{img}"
+            style_dir = os.path.join(target_image_dir, style)
+            for img in os.listdir(style_dir):
+                img_path = os.path.join(style_dir, img)
                 self.target_images.append(img_path)
                 images_related_style.append(img_path)
             self.style_to_images[style] = images_related_style
@@ -46,35 +45,39 @@ class FontDataset(Dataset):
         target_image_path = self.target_images[index]
         target_image_name = os.path.basename(target_image_path)
 
-        name = target_image_name.split('.')[0].rstrip('+')  # bỏ dấu '+' nếu có ở cuối
-        parts = name.split('+')
-        if len(parts) != 2:
-            raise ValueError(f"❌ Tên ảnh không hợp lệ (phải có đúng 1 dấu '+'): {target_image_name}")
-        style, content = parts
+        # Bỏ dấu '+' ở cuối nếu có
+        name = target_image_name.split('.')[0].rstrip('+')
 
-        # Read content image — thử không '+' trước, nếu không có thì thêm lại '+'
-        content_base_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
-        if os.path.exists(content_base_path):
-            content_image_path = content_base_path
-        else:
-            fallback_path = f"{self.root}/{self.phase}/ContentImage/{content}+.png"
+        # Tách style và content từ dấu '+' cuối cùng
+        if '+' not in name:
+            raise ValueError(f"❌ Tên ảnh không hợp lệ (không có dấu '+'): {target_image_name}")
+
+        last_plus_index = name.rfind('+')
+        style = name[:last_plus_index]
+        content = name[last_plus_index + 1:]
+
+        if not content:
+            raise ValueError(f"❌ Tên ảnh bị thiếu content glyph: {target_image_name}")
+
+        # Tìm content image tương ứng (ưu tiên không có '+' trong tên file)
+        content_dir = os.path.join(self.root, self.phase, "ContentImage")
+        content_image_path = os.path.join(content_dir, f"{content}.png")
+        if not os.path.exists(content_image_path):
+            fallback_path = os.path.join(content_dir, f"{content}+.png")
             if os.path.exists(fallback_path):
                 content_image_path = fallback_path
             else:
-                raise FileNotFoundError(f"❌ Không tìm thấy file content image: {content_base_path} hoặc {fallback_path}")
+                raise FileNotFoundError(f"❌ Không tìm thấy file content image: {content_image_path} hoặc {fallback_path}")
 
+        # Load images
         content_image = Image.open(content_image_path).convert('RGB')
-
-        # Random sample style image
-        images_related_style = self.style_to_images[style].copy()
-        images_related_style.remove(target_image_path)
-        style_image_path = random.choice(images_related_style)
-        style_image = Image.open(style_image_path).convert("RGB")
-
+        style_image = Image.open(random.choice([
+            path for path in self.style_to_images[style] if path != target_image_path
+        ])).convert("RGB")
         target_image = Image.open(target_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
 
-        if self.transforms is not None:
+        if self.transforms:
             content_image = self.transforms[0](content_image)
             style_image = self.transforms[1](style_image)
             target_image = self.transforms[2](target_image)
@@ -88,24 +91,24 @@ class FontDataset(Dataset):
         }
 
         if self.scr:
-            style_list = list(self.style_to_images.keys())
-            style_list.remove(style)
-            choose_neg_names = []
-            for i in range(self.num_neg):
-                choose_style = random.choice(style_list)
-                style_list.remove(choose_style)
-                neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.png"
-                choose_neg_names.append(neg_name)
-
-            for i, neg_name in enumerate(choose_neg_names):
-                neg_image = Image.open(neg_name).convert("RGB")
-                if self.transforms is not None:
+            # Lấy ảnh "neg" khác style nhưng cùng content
+            style_list = [s for s in self.style_to_images if s != style]
+            neg_images = []
+            for _ in range(self.num_neg):
+                neg_style = random.choice(style_list)
+                style_list.remove(neg_style)
+                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.png")
+                if not os.path.exists(neg_path):
+                    alt_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.png")
+                    if os.path.exists(alt_path):
+                        neg_path = alt_path
+                    else:
+                        raise FileNotFoundError(f"❌ Không tìm thấy negative image: {neg_path} hoặc {alt_path}")
+                neg_image = Image.open(neg_path).convert("RGB")
+                if self.transforms:
                     neg_image = self.transforms[2](neg_image)
-                if i == 0:
-                    neg_images = neg_image[None, :, :, :]
-                else:
-                    neg_images = torch.cat([neg_images, neg_image[None, :, :, :]], dim=0)
-            sample["neg_images"] = neg_images
+                neg_images.append(neg_image.unsqueeze(0))
+            sample["neg_images"] = torch.cat(neg_images, dim=0)
 
         return sample
 
