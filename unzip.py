@@ -28,5 +28,5 @@ if __name__ == "__main__":
     main()
 
     with zipfile.ZipFile("thesis-data.zip", 'r') as zip_ref:
-    for name in zip_ref.namelist():
-        print(name)
+        for name in zip_ref.namelist():
+            print(name)
