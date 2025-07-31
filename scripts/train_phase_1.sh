@@ -11,7 +11,7 @@ accelerate launch --num_processes=1 train.py \
     --channel_attn=True \
     --content_start_channel=64 \
     --style_start_channel=64 \
-    --train_batch_size=256 \
+    --train_batch_size=128 \
     --perceptual_coefficient=0.01 \
     --offset_coefficient=0.5 \
     --max_train_steps=440000 \
@@ -22,5 +22,5 @@ accelerate launch --num_processes=1 train.py \
     --lr_scheduler="linear" \
     --lr_warmup_steps=10000 \
     --drop_prob=0.1 \
-    --mixed_precision="no"
+    --mixed_precision="fp16"
     
