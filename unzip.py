@@ -1,5 +1,10 @@
 import os
 import zipfile
+import zipfile
+
+with zipfile.ZipFile("thesis-data.zip", 'r') as zip_ref:
+    for name in zip_ref.namelist():
+        print(name)
 
 def main():
     zip_filename = "thesis-data.zip"
