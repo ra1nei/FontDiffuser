@@ -46,7 +46,12 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         target_image_name = target_image_path.split('/')[-1]
-        style, content = target_image_name.split('.')[0].split('+')
+
+        name = target_image_name.split('.')[0].rstrip('+')  # bỏ dấu '+' nếu có ở cuối
+        parts = name.split('+')
+        if len(parts) != 2:
+            raise ValueError(f"❌ Tên ảnh không hợp lệ (phải có đúng 1 dấu '+'): {target_image_name}")
+        style, content = parts
         
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
