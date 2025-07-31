@@ -1,7 +1,7 @@
 accelerate launch train.py \
     --seed=123 \
     --experience_name="FontDiffuser_training_phase_2" \
-    --data_root="./data_examples" \
+    --data_root="./thesis-data" \
     --output_dir="../outputs/FontDiffuser" \
     --report_to="tensorboard" \
     --phase_2 \
