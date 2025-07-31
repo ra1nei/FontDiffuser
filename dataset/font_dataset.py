@@ -53,11 +53,11 @@ class FontDataset(Dataset):
         style, content = parts
 
         # Read content image — thử không '+' trước, nếu không có thì thêm lại '+'
-        content_base_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_base_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
         if os.path.exists(content_base_path):
             content_image_path = content_base_path
         else:
-            fallback_path = f"{self.root}/{self.phase}/ContentImage/{content}+.jpg"
+            fallback_path = f"{self.root}/{self.phase}/ContentImage/{content}+.png"
             if os.path.exists(fallback_path):
                 content_image_path = fallback_path
             else:
@@ -94,7 +94,7 @@ class FontDataset(Dataset):
             for i in range(self.num_neg):
                 choose_style = random.choice(style_list)
                 style_list.remove(choose_style)
-                neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.png"
                 choose_neg_names.append(neg_name)
 
             for i, neg_name in enumerate(choose_neg_names):
