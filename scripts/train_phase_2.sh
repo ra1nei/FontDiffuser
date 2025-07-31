@@ -1,4 +1,4 @@
-accelerate launch train.py \
+accelerate launch --num_processes=1 train.py \
     --seed=123 \
     --experience_name="FontDiffuser_training_phase_2" \
     --data_root="./thesis-data" \
