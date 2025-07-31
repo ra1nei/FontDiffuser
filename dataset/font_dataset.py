@@ -32,16 +32,24 @@ class FontDataset(Dataset):
 
     def get_path(self):
         self.target_images = []
-        # images with related style  
         self.style_to_images = {}
-        target_image_dir = f"{self.root}/{self.phase}/TargetImage"
+
+        target_image_dir = os.path.join(self.root, self.phase, "TargetImage")
+
+        if not os.path.exists(target_image_dir):
+            raise FileNotFoundError(f"❌ Không tìm thấy thư mục: {target_image_dir}")
+
         for style in os.listdir(target_image_dir):
+            style_path = os.path.join(target_image_dir, style)
+            if not os.path.isdir(style_path):
+                continue
             images_related_style = []
-            for img in os.listdir(f"{target_image_dir}/{style}"):
-                img_path = f"{target_image_dir}/{style}/{img}"
+            for img in os.listdir(style_path):
+                img_path = os.path.join(style_path, img)
                 self.target_images.append(img_path)
                 images_related_style.append(img_path)
             self.style_to_images[style] = images_related_style
+
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
@@ -49,7 +57,7 @@ class FontDataset(Dataset):
         style, content = target_image_name.split('.')[0].split('+')
         
         # Read content image
-        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_image_path = os.path.join(self.root, self.phase, "ContentImage", f"{content}.jpg")
         content_image = Image.open(content_image_path).convert('RGB')
 
         # Random sample used for style image
@@ -84,7 +92,7 @@ class FontDataset(Dataset):
                 choose_style = random.choice(style_list)
                 choose_index = style_list.index(choose_style)
                 style_list.pop(choose_index)
-                choose_neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                choose_neg_name = os.path.join(self.root, "train", "TargetImage", choose_style, f"{choose_style}+{content}.jpg")
                 choose_neg_names.append(choose_neg_name)
 
             # Load neg_images
