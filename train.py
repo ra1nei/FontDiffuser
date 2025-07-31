@@ -269,7 +269,4 @@ def main():
     accelerator.end_training()
 
 if __name__ == "__main__":
-    print("Running")
-    print("GPU check:", torch.cuda.is_available())
-    print("Using device:", torch.cuda.get_device_name(torch.cuda.current_device()))
     main()
