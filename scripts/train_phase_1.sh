@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=6 accelerate launch --num_processes=1 train.py \
+accelerate launch --num_processes=1 train.py \
     --seed=123 \
     --experience_name="FontDiffuser_training_phase_1" \
     --data_root="./thesis-data/thesis-data" \
@@ -17,7 +17,7 @@ CUDA_VISIBLE_DEVICES=6 accelerate launch --num_processes=1 train.py \
     --max_train_steps=440000 \
     --ckpt_interval=40000 \
     --gradient_accumulation_steps=1 \
-    --log_interval=50 \
+    --log_interval=25 \
     --learning_rate=1e-4 \
     --lr_scheduler="linear" \
     --lr_warmup_steps=10000 \
