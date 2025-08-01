@@ -13,7 +13,7 @@ module load python39
 
 # ===== (Tùy chọn) Activate môi trường ảo nếu cần =====
 # Nếu bạn dùng virtualenv:
-source ~/dang_env/bin/activate
+# source ~/dang_env/bin/activate
 
 # ===== Chạy script train =====
 bash scripts/train_phase_1.sh
