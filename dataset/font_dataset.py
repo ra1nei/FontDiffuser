@@ -61,9 +61,9 @@ class FontDataset(Dataset):
 
         # Tìm content image tương ứng (ưu tiên không có '+' trong tên file)
         content_dir = os.path.join(self.root, self.phase, "ContentImage")
-        content_image_path = os.path.join(content_dir, f"{content}.png")
+        content_image_path = os.path.join(content_dir, f"{content}.jpg")
         if not os.path.exists(content_image_path):
-            fallback_path = os.path.join(content_dir, f"{content}+.png")
+            fallback_path = os.path.join(content_dir, f"{content}+.jpg")
             if os.path.exists(fallback_path):
                 content_image_path = fallback_path
             else:
@@ -97,9 +97,9 @@ class FontDataset(Dataset):
             for _ in range(self.num_neg):
                 neg_style = random.choice(style_list)
                 style_list.remove(neg_style)
-                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.png")
+                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
                 if not os.path.exists(neg_path):
-                    alt_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.png")
+                    alt_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
                     if os.path.exists(alt_path):
                         neg_path = alt_path
                     else:
