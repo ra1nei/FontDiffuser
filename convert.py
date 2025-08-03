@@ -32,12 +32,12 @@ for lang in ["chinese", "english"]:
             full_input_path = os.path.join(font_path, fname)
 
             # Copy TargetImage with rename
-            target_name = f"{style_name}+{char_name}.png"
+            target_name = f"{style_name}+{char_name}.jpg"
             shutil.copyfile(full_input_path, os.path.join(output_style_dir, target_name))
 
             # Copy one ContentImage (duy nhất cho mỗi ký tự)
             if char_name not in copied_content:
-                shutil.copyfile(full_input_path, os.path.join(CONTENT_DIR, f"{char_name}.png"))
+                shutil.copyfile(full_input_path, os.path.join(CONTENT_DIR, f"{char_name}.jpg"))
                 copied_content.add(char_name)
 
 print("✅ Done converting to FontDiffuser format!")
