@@ -333,20 +333,31 @@ class GBlock2(nn.Module):
 def content_encoder_arch(ch =64,out_channel_multiplier = 1, input_nc = 3):
     arch = {}
     n=2
-    arch[80] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
-                                'out_channels' : [item * ch for item in [1,2,4]],
-                                'resolution': [40,20,10]}
-    arch[96] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
-                                'out_channels' : [item * ch for item in [1,2,4]],
-                                'resolution': [48,24,12]}
-                                
-    arch[128] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2,4,8]],
-                                'out_channels' : [item * ch for item in [1,2,4,8,16]],
-                                'resolution': [64,32,16,8,4]}
-    
-    arch[256] = {'in_channels':[input_nc]+[ch*item for item in [1,2,4,8,8]],
-                                'out_channels':[item*ch for item in [1,2,4,8,8,16]],
-                                'resolution': [128,64,32,16,8,4]}
+    arch[64] = {
+        'in_channels':  [input_nc] + [ch * item for item in [1, 2]],
+        'out_channels': [ch * item for item in [1, 2, 4]],
+        'resolution':   [32, 16, 8]
+    }
+    arch[80] = {
+        'in_channels':  [input_nc] + [ch * item for item in [1, 2]],
+        'out_channels': [ch * item for item in [1, 2, 4]],
+        'resolution':   [40, 20, 10]
+    }
+    arch[96] = {
+        'in_channels':  [input_nc] + [ch * item for item in [1, 2]],
+        'out_channels': [ch * item for item in [1, 2, 4]],
+        'resolution':   [48, 24, 12]
+    }
+    arch[128] = {
+        'in_channels':  [input_nc] + [ch * item for item in [1, 2, 4, 8]],
+        'out_channels': [ch * item for item in [1, 2, 4, 8, 16]],
+        'resolution':   [64, 32, 16, 8, 4]
+    }
+    arch[256] = {
+        'in_channels':  [input_nc] + [ch * item for item in [1, 2, 4, 8, 8]],
+        'out_channels': [ch * item for item in [1, 2, 4, 8, 8, 16]],
+        'resolution':   [128, 64, 32, 16, 8, 4]
+    }
     return arch
 
 class ContentEncoder(ModelMixin, ConfigMixin):
