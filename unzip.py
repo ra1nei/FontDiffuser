@@ -2,8 +2,8 @@ import os
 import zipfile
 
 def main():
-    zip_filename = "thesis-data.zip"
-    extract_dir = "thesis-data"
+    zip_filename = "thesis-data-jpg.zip"
+    extract_dir = "thesis-data-jpg"
 
     # Lấy đường dẫn tuyệt đối đến file zip
     zip_path = os.path.join(os.path.dirname(__file__), zip_filename)
