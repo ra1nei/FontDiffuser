@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -o logs/phase1_%j.out              # Ghi log output (%j = JobID)
-#SBATCH --time=12:00:00                    # Thời gian tối đa (12 tiếng, chỉnh lại tùy bạn)
+#SBATCH --time=72:00:00                    # Thời gian tối đa (12 tiếng, chỉnh lại tùy bạn)
 #SBATCH --gres=gpu:1                       # Dùng 1 GPU
 #SBATCH -N 1                               # Số lượng node
 #SBATCH --ntasks=1                         # 1 task
