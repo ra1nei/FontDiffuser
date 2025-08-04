@@ -382,14 +382,16 @@ class ContentEncoder(ModelMixin, ConfigMixin):
         self.SN_eps = SN_eps
         self.fp16 = G_fp16
 
-        if self.resolution == 96:
-            self.save_featrues = [0,1,2,3,4]
+        if self.resolution == 64:
+            self.save_features = [0,1,2,3,4]
+        elif self.resolution == 96:
+            self.save_features = [0,1,2,3,4]
         elif self.resolution == 80:
-            self.save_featrues = [0,1,2,3,4]
+            self.save_features = [0,1,2,3,4]
         elif self.resolution == 128:
-            self.save_featrues = [0,1,2,3,4]
+            self.save_features = [0,1,2,3,4]
         elif self.resolution == 256:
-            self.save_featrues = [0,1,2,3,4,5]
+            self.save_features = [0,1,2,3,4,5]
         
         self.out_channel_nultipiler = 1
         self.arch = content_encoder_arch(self.ch, self.out_channel_nultipiler,input_nc)[resolution]
@@ -441,6 +443,6 @@ class ContentEncoder(ModelMixin, ConfigMixin):
         for index, blocklist in enumerate(self.blocks):
             for block in blocklist:
                 h = block(h)            
-            if index in self.save_featrues[:-1]:
+            if index in self.save_features[:-1]:
                 residual_features.append(h)        
         return h,residual_features
