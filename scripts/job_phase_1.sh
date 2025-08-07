@@ -10,6 +10,6 @@
 module load slurm
 module load python39
 
-# source ~/dang_env/bin/activate
+source ~/dang_env/bin/activate
 
 bash scripts/train_phase_1.sh
