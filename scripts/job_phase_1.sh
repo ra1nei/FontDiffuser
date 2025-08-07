@@ -13,4 +13,7 @@ module load python39
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate dang_env
 
+cd ~/data/fontdiffuser/FontDiffuser
+git pull origin main
+
 bash scripts/train_phase_1.sh
