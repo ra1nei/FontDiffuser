@@ -10,6 +10,7 @@
 module load slurm
 module load python39
 
-source ~/dang_env/bin/activate
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate dang_env
 
 bash scripts/train_phase_1.sh
