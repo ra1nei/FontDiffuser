@@ -10,6 +10,10 @@
 module load slurm
 module load python39
 
-source ~/dang_env/bin/activate
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate dang_env
+
+cd ~/data/fontdiffuser/FontDiffuser
+git pull origin main
 
 bash scripts/train_phase_2.sh
