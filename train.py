@@ -57,6 +57,8 @@ def main():
         log_with=args.report_to,
         project_dir=logging_dir)
 
+    torch.autograd.set_detect_anomaly(True)
+    
     if accelerator.is_main_process:
         os.makedirs(args.output_dir, exist_ok=True)
     
