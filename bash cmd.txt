@@ -3,3 +3,4 @@ tail -f $(ls logs/phase1_*.out | sort -V | tail -n 1)			Tail file có ID cao nh�
 watch -n 1 squeue												Xem tiến trình chạy
 sbatch train_phase1_job.sh										Chạy
 squeue -u $USER													Các job mà user đang chạy
+tail -f  ../outputs/FontDiffuser/fontdiffuser_training.log		Xem log của job hiện tại
