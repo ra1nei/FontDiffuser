@@ -154,7 +154,6 @@ def main():
 
     ### DEBUGGING
     print(f"Selected {len(selected_fonts)}")
-    print(f"Selected style folders: {selected_style_folders}")
     print(f"Total target images: {len(train_font_dataset)}")
 
     train_dataloader = torch.utils.data.DataLoader(
