@@ -2,6 +2,7 @@ import os
 import math
 import time
 import logging
+import random
 from tqdm.auto import tqdm
 
 import torch
@@ -119,7 +120,25 @@ def main():
     unique_fonts = set(f.split("_")[0] for f in all_style_folders)
     print(f"Total unique fonts: {len(unique_fonts)}")
     # -------------------------
+    # --- lấy x% font ---
+    all_fonts = list(unique_fonts)
+    if args.font_ratio < 1.0:
+        n_selected = max(1, int(len(all_fonts) * args.font_ratio))
+        selected_fonts = random.sample(all_fonts, n_selected)
+    else:
+        selected_fonts = all_fonts
 
+    # --- lọc folder style chỉ giữ font được chọn ---
+    train_root = os.path.join(args.data_root, "train", "TargetImage")
+    all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
+    selected_style_folders = []
+    for folder in all_style_folders:
+        font_name = folder.split("_")[0]
+        if font_name in selected_fonts:
+            selected_style_folders.append(folder)
+    # -------------------------
+
+    print(f"Using {len(selected_fonts)} fonts ({len(selected_style_folders)} style folders)")
     train_font_dataset = FontDataset(
         args=args,
         phase='train', 
