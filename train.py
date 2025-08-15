@@ -111,6 +111,15 @@ def main():
                            interpolation=transforms.InterpolationMode.BILINEAR),
          transforms.ToTensor(),
          transforms.Normalize([0.5], [0.5])])
+    
+    # -------------------------
+    # Đếm số font unique
+    train_root = os.path.join(args.data_root, "train", "TargetImage")
+    all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
+    unique_fonts = set(f.split("_")[0] for f in all_style_folders)
+    print(f"Total unique fonts: {len(unique_fonts)}")
+    # -------------------------
+
     train_font_dataset = FontDataset(
         args=args,
         phase='train', 

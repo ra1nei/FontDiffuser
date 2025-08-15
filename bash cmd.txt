@@ -1,6 +1,6 @@
 ls -t logs/phase1_*.out | tail -n +2 | xargs rm -v				Xoá hết .out cũ
-tail -f $(ls logs/phase1_*.out | sort -V | tail -n 1)			Tail file có ID cao nhất (file hiện tại)
 watch -n 1 squeue												Xem tiến trình chạy
 sbatch train_phase1_job.sh										Chạy
 squeue -u $USER													Các job mà user đang chạy
+tail -f $(ls logs/phase1_*.out | sort -V | tail -n 1)			Tail file có ID cao nhất (file hiện tại)
 tail -f  ../outputs/FontDiffuser/fontdiffuser_training.log		Xem log của job hiện tại
