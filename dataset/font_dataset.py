@@ -16,14 +16,15 @@ def get_nonorm_transform(resolution):
 
 class FontDataset(Dataset):
     """The dataset of font generation"""
-    def __init__(self, args, phase, transforms=None, scr=False):
+    def __init__(self, args, phase, transforms=None, scr=False, allowed_styles=None):
         super().__init__()
         self.root = args.data_root
         self.phase = phase
         self.scr = scr
         if self.scr:
             self.num_neg = args.num_neg
-
+        
+        self.allowed_styles = allowed_styles
         self.get_path()
         self.transforms = transforms
         self.nonorm_transforms = get_nonorm_transform(args.resolution)
@@ -33,6 +34,8 @@ class FontDataset(Dataset):
         self.style_to_images = {}
         target_image_dir = os.path.join(self.root, self.phase, "TargetImage")
         for style in os.listdir(target_image_dir):
+            if self.allowed_styles is not None and style not in self.allowed_styles:
+                continue
             images_related_style = []
             style_dir = os.path.join(target_image_dir, style)
             for img in os.listdir(style_dir):

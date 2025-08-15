@@ -138,7 +138,9 @@ def main():
             selected_style_folders.append(folder)
     # -------------------------
 
+    ### DEBUGGING
     print(f"Using {len(selected_fonts)} fonts ({len(selected_style_folders)} style folders)")
+    
     train_font_dataset = FontDataset(
         args=args,
         phase='train', 
@@ -146,7 +148,15 @@ def main():
             content_transforms, 
             style_transforms, 
             target_transforms],
-        scr=args.phase_2)
+        scr=args.phase_2,
+        allowed_styles=selected_style_folders
+    )
+
+    ### DEBUGGING
+    print(f"Selected {len(selected_fonts)} fonts: {selected_fonts}")
+    print(f"Selected style folders: {selected_style_folders}")
+    print(f"Total target images: {len(train_font_dataset)}")
+
     train_dataloader = torch.utils.data.DataLoader(
         train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN())
     
