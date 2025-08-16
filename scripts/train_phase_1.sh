@@ -22,5 +22,5 @@ accelerate launch --num_processes=1 train.py \
     --lr_scheduler="linear" \
     --lr_warmup_steps=10000 \
     --drop_prob=0.1 \
-    --mixed_precision="fp16" \
+    --mixed_precision="no" \
     --font_ratio 0.8
