@@ -144,12 +144,10 @@ def main():
     train_font_dataset = FontDataset(
         args=args,
         phase='train', 
-        transforms=[
-            content_transforms, 
-            style_transforms, 
-            target_transforms],
+        transforms=[content_transforms, style_transforms, target_transforms],
         scr=args.phase_2,
-        allowed_styles=selected_style_folders
+        allowed_styles=selected_style_folders,
+        same_ratio=0.3   # 30% same-lingual, 70% cross-lingual
     )
 
     ### DEBUGGING
