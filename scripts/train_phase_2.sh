@@ -1,12 +1,12 @@
 accelerate launch --num_processes=1 train.py \
-    --seed=123 \
-    --experience_name="FontDiffuser_training_phase_2" \
+    --seed=7 \
+    --experience_name="FontDiffuser_Training_Phase_2" \
     --data_root="./thesis-data-jpg/thesis-data-jpg" \
     --output_dir="outputs" \
-    --report_to="tensorboard" \
+    --report_to="wandb" \
     --phase_2 \
     --phase_1_ckpt_dir="phase_1_ckpt" \
-    --scr_ckpt_path="ckpt/scr_210000.pth" \
+    --scr_ckpt_path="ckpt/scr_50000.pth" \
     --sc_coefficient=0.01 \
     --num_neg=16 \
     --resolution=64 \
@@ -27,4 +27,4 @@ accelerate launch --num_processes=1 train.py \
     --lr_scheduler="constant" \
     --lr_warmup_steps=1000 \
     --drop_prob=0.1 \
-    --mixed_precision="fp16"
+    --mixed_precision="no"
