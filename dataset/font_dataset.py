@@ -144,10 +144,14 @@ class FontDataset(Dataset):
                     if not os.path.exists(neg_path):
                         neg_path = os.path.join(self.root, self.phase, "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
                     if os.path.exists(neg_path):
-                        neg_image = Image.open(neg_path).convert("RGB")
-                        if self.transforms:
-                            neg_image = self.transforms[2](neg_image)
-                        neg_images.append(neg_image.unsqueeze(0))
+                        try:
+                            neg_image = Image.open(neg_path).convert("RGB")
+                            if self.transforms:
+                                neg_image = self.transforms[2](neg_image)
+                            neg_images.append(neg_image.unsqueeze(0))
+                        except Exception as e:
+                            print(f"⚠️ Bỏ qua neg image lỗi: {neg_path}, {e}")
+                            continue
 
                 if len(neg_images) > 0:
                     sample["neg_images"] = torch.cat(neg_images, dim=0)
