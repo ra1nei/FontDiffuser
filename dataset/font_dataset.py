@@ -125,27 +125,34 @@ class FontDataset(Dataset):
         }
 
         if self.scr:
-            # Lấy danh sách style khác với style hiện tại
+            # lấy danh sách style khác với style hiện tại
             style_list = [s for s in self.style_to_images if s != style]
-            
-            # Lọc theo script để không chọn style không có glyph
+
+            # lọc theo script
             if script == "latin":
                 style_list = [s for s in style_list if s.endswith("english")]
             else:
                 style_list = [s for s in style_list if s.endswith("chinese")]
 
-            # --- neg sample ---
+            # chỉ giữ các style thực sự có content
+            valid_neg_styles = []
+            for s in style_list:
+                paths = self.style_to_images[s]
+                # kiểm tra xem có file +content tồn tại không
+                if any(os.path.basename(p).split('+')[-1].split('.')[0].rstrip('+') == content for p in paths):
+                    valid_neg_styles.append(s)
+
+            if len(valid_neg_styles) < self.num_neg:
+                raise ValueError(f"Không đủ negative images cho glyph {content}")
+
+            # chọn negative images từ valid_neg_styles
             neg_images = []
             for _ in range(self.num_neg):
-                neg_style = random.choice(style_list)
-                style_list.remove(neg_style)
-                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
-                if not os.path.exists(neg_path):
-                    alt_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
-                    if os.path.exists(alt_path):
-                        neg_path = alt_path
-                    else:
-                        raise FileNotFoundError(f"❌ Không tìm thấy negative image: {neg_path} hoặc {alt_path}")
+                neg_style = random.choice(valid_neg_styles)
+                valid_neg_styles.remove(neg_style)
+                # tìm file chứa content
+                neg_paths = [p for p in self.style_to_images[neg_style] if os.path.basename(p).split('+')[-1].split('.')[0].rstrip('+') == content]
+                neg_path = neg_paths[0]  # lấy file đầu tiên tìm được
                 neg_image = Image.open(neg_path).convert("RGB")
                 if self.transforms:
                     neg_image = self.transforms[2](neg_image)
