@@ -251,18 +251,29 @@ def main():
                             args.offset_coefficient * offset_loss
                 
                 if args.phase_2:
-                    neg_images = samples["neg_images"]
-                    # sc loss
-                    sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
-                        pred_original_sample_norm, 
-                        target_images, 
-                        neg_images, 
-                        nce_layers=args.nce_layers)
-                    sc_loss = scr.calculate_nce_loss(
-                        sample_s=sample_style_embeddings,
-                        pos_s=pos_style_embeddings,
-                        neg_s=neg_style_embeddings)
-                    loss += args.sc_coefficient * sc_loss
+                    # Chỉ tính SCR loss nếu có negative images
+                    if "neg_images" in samples and samples["neg_images"] is not None:
+                        neg_images = samples["neg_images"]
+
+                        # SCR forward
+                        sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
+                            pred_original_sample_norm, 
+                            target_images, 
+                            neg_images, 
+                            nce_layers=args.nce_layers
+                        )
+
+                        # SCR loss
+                        sc_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            pos_s=pos_style_embeddings,
+                            neg_s=neg_style_embeddings
+                        )
+                        loss += args.sc_coefficient * sc_loss
+                    else:
+                        # Nếu không có negative thì bỏ qua SCR loss
+                        sc_loss = torch.tensor(0.0, device=pred_original_sample_norm.device)
+
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()

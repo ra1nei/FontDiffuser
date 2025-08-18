@@ -138,27 +138,18 @@ class FontDataset(Dataset):
             for s in style_list:
                 path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
                 path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
-                if os.path.exists(path1) or os.path.exists(path2):
-                    valid_style_list.append(s)
+                if os.path.exists(path1):
+                    valid_style_list.append(path1)
+                elif os.path.exists(path2):
+                    valid_style_list.append(path2)
 
             if len(valid_style_list) == 0:
                 raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
 
-            # Chọn num_neg negative images
-            neg_images = []
-            for _ in range(min(self.num_neg, len(valid_style_list))):
-                neg_style = random.choice(valid_style_list)
-                valid_style_list.remove(neg_style)  # tránh trùng
-                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
-                if not os.path.exists(neg_path):
-                    neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
-                neg_image = Image.open(neg_path).convert("RGB")
-                if self.transforms:
-                    neg_image = self.transforms[2](neg_image)
-                neg_images.append(neg_image.unsqueeze(0))
+            # Random chọn path cho neg images
+            neg_paths = random.sample(valid_style_list, k=min(self.num_neg, len(valid_style_list)))
 
-            sample["neg_images"] = torch.cat(neg_images, dim=0)
-
+            sample["neg_paths"] = neg_paths   # ⚡ chỉ lưu đường dẫn, không load ảnh
 
         return sample
 
