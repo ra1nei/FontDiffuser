@@ -127,18 +127,6 @@ class FontDataset(Dataset):
             # Lấy danh sách style khác style hiện tại
             style_list = [s for s in self.style_to_images if s != style]
 
-            # Chỉ giữ style cùng script (latin/chinese) nếu muốn same-lingual
-            if random.random() < self.same_ratio:  # same-lingual
-                if script == "latin":
-                    style_list = [s for s in style_list if s.endswith("english")]
-                else:
-                    style_list = [s for s in style_list if s.endswith("chinese")]
-            else:  # cross-lingual
-                if script == "latin":
-                    style_list = [s for s in style_list if s.endswith("chinese")]
-                else:
-                    style_list = [s for s in style_list if s.endswith("english")]
-
             # Lọc tiếp chỉ giữ style có file content tồn tại
             valid_style_list = []
             for s in style_list:
