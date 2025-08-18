@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -o logs/phase1_%j.out
-#SBATCH --time=5-00:00:00
+#SBATCH --time=120:00:00
 #SBATCH --gres=gpu:1
 #SBATCH -N 1
 #SBATCH --ntasks=1
