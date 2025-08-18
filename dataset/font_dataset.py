@@ -85,8 +85,8 @@ class FontDataset(Dataset):
             if os.path.exists(fallback_path):
                 content_image_path = fallback_path
             else:
-                return None  # skip nếu không có content
-
+                return self.__getitem__(random.randint(0, len(self.target_images) - 1))
+            
         # --- quyết định same hay cross ---
         script = self.detect_script(style)
         if random.random() < self.same_ratio:
