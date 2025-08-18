@@ -132,7 +132,8 @@ class FontDataset(Dataset):
             for s in style_list:
                 path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
                 path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
-                print(path1, path2)
+                ### DEBUGGING
+                # print(path1, path2)
                 if os.path.exists(path1) or os.path.exists(path2):
                     valid_style_list.append(s)
 
