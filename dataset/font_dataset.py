@@ -125,38 +125,45 @@ class FontDataset(Dataset):
         }
 
         if self.scr:
-            # lấy danh sách style khác với style hiện tại
+            # Lấy danh sách style khác style hiện tại
             style_list = [s for s in self.style_to_images if s != style]
 
-            # lọc theo script
-            if script == "latin":
-                style_list = [s for s in style_list if s.endswith("english")]
-            else:
-                style_list = [s for s in style_list if s.endswith("chinese")]
+            # Chỉ giữ style cùng script (latin/chinese) nếu muốn same-lingual
+            if random.random() < self.same_ratio:  # same-lingual
+                if script == "latin":
+                    style_list = [s for s in style_list if s.endswith("english")]
+                else:
+                    style_list = [s for s in style_list if s.endswith("chinese")]
+            else:  # cross-lingual
+                if script == "latin":
+                    style_list = [s for s in style_list if s.endswith("chinese")]
+                else:
+                    style_list = [s for s in style_list if s.endswith("english")]
 
-            # chỉ giữ các style thực sự có content
-            valid_neg_styles = []
+            # Lọc tiếp chỉ giữ style có file content tồn tại
+            valid_style_list = []
             for s in style_list:
-                paths = self.style_to_images[s]
-                # kiểm tra xem có file +content tồn tại không
-                if any(os.path.basename(p).split('+')[-1].split('.')[0].rstrip('+') == content for p in paths):
-                    valid_neg_styles.append(s)
+                path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
+                path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
+                if os.path.exists(path1) or os.path.exists(path2):
+                    valid_style_list.append(s)
 
-            if len(valid_neg_styles) < self.num_neg:
-                raise ValueError(f"Không đủ negative images cho glyph {content}")
+            if len(valid_style_list) == 0:
+                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
 
-            # chọn negative images từ valid_neg_styles
+            # Chọn num_neg negative images
             neg_images = []
-            for _ in range(self.num_neg):
-                neg_style = random.choice(valid_neg_styles)
-                valid_neg_styles.remove(neg_style)
-                # tìm file chứa content
-                neg_paths = [p for p in self.style_to_images[neg_style] if os.path.basename(p).split('+')[-1].split('.')[0].rstrip('+') == content]
-                neg_path = neg_paths[0]  # lấy file đầu tiên tìm được
+            for _ in range(min(self.num_neg, len(valid_style_list))):
+                neg_style = random.choice(valid_style_list)
+                valid_style_list.remove(neg_style)  # tránh trùng
+                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
+                if not os.path.exists(neg_path):
+                    neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
                 neg_image = Image.open(neg_path).convert("RGB")
                 if self.transforms:
                     neg_image = self.transforms[2](neg_image)
                 neg_images.append(neg_image.unsqueeze(0))
+
             sample["neg_images"] = torch.cat(neg_images, dim=0)
 
         return sample
