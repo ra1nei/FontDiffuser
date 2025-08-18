@@ -6,7 +6,7 @@ accelerate launch --num_processes=1 train.py \
     --report_to="wandb" \
     --phase_2 \
     --phase_1_ckpt_dir="phase_1_ckpt" \
-    --scr_ckpt_path="ckpt/scr_50000.pth" \
+    --scr_ckpt_path="ckpt/scr_210000.pth" \
     --sc_coefficient=0.01 \
     --num_neg=16 \
     --resolution=64 \
