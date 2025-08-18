@@ -125,8 +125,16 @@ class FontDataset(Dataset):
         }
 
         if self.scr:
-            # neg sample
+            # Lấy danh sách style khác với style hiện tại
             style_list = [s for s in self.style_to_images if s != style]
+            
+            # Lọc theo script để không chọn style không có glyph
+            if script == "latin":
+                style_list = [s for s in style_list if s.endswith("english")]
+            else:
+                style_list = [s for s in style_list if s.endswith("chinese")]
+
+            # --- neg sample ---
             neg_images = []
             for _ in range(self.num_neg):
                 neg_style = random.choice(style_list)
