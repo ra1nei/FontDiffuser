@@ -142,13 +142,13 @@ class FontDataset(Dataset):
             # Lọc tiếp chỉ giữ style có file content tồn tại
             valid_style_list = []
             for s in style_list:
-                path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
-                path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
+                path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}_chinese+{content}.jpg")
+                path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}_chinese+{content}+.jpg")
                 if os.path.exists(path1) or os.path.exists(path2):
                     valid_style_list.append(s)
 
             if len(valid_style_list) == 0:
-                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
+                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}", "")
 
             # Chọn num_neg negative images
             neg_images = []
