@@ -57,8 +57,6 @@ class FontDataset(Dataset):
             return "latin"
         elif style_name.endswith("chinese"):
             return "chinese"
-        else:
-            raise ValueError(f"❌ Không nhận diện được script trong style: {style_name}")
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
@@ -85,19 +83,28 @@ class FontDataset(Dataset):
             if os.path.exists(fallback_path):
                 content_image_path = fallback_path
             else:
-                return self.__getitem__(random.randint(0, len(self.target_images) - 1))
-            
+                raise FileNotFoundError(f"❌ Không tìm thấy file content image: {content_image_path} hoặc {fallback_path}")
+
         # --- quyết định same hay cross ---
         script = self.detect_script(style)
         if random.random() < self.same_ratio:
             # same-lingual
-            style_folder = random.choice(self.latin_fonts if script == "latin" else self.chinese_fonts)
+            if script == "latin":
+                style_folder = random.choice(self.latin_fonts)
+            else:
+                style_folder = random.choice(self.chinese_fonts)
         else:
             # cross-lingual
-            style_folder = random.choice(self.chinese_fonts if script == "latin" else self.latin_fonts)
+            if script == "latin":
+                style_folder = random.choice(self.chinese_fonts)
+            else:
+                style_folder = random.choice(self.latin_fonts)
 
         # --- load style + target ---
-        style_image = Image.open(random.choice(self.style_to_images[style_folder])).convert("RGB")
+        style_image = Image.open(random.choice([
+            path for path in self.style_to_images[style_folder]
+        ])).convert("RGB")
+
         target_image = Image.open(target_image_path).convert("RGB")
         content_image = Image.open(content_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
@@ -113,48 +120,50 @@ class FontDataset(Dataset):
             "target_image": target_image,
             "target_image_path": target_image_path,
             "nonorm_target_image": nonorm_target_image,
-            "neg_images": None,   # mặc định None
         }
 
-        # --- xử lý negative sample ---
+        ### TODO
         if self.scr:
+            # Lấy danh sách style khác style hiện tại
             style_list = [s for s in self.style_to_images if s != style]
 
-            # lọc same / cross
+            # Chỉ giữ style cùng script (latin/chinese) nếu muốn same-lingual
             if random.random() < self.same_ratio:  # same-lingual
-                style_list = [s for s in style_list if (s.endswith("english") if script == "latin" else s.endswith("chinese"))]
+                if script == "latin":
+                    style_list = [s for s in style_list if s.endswith("english")]
+                else:
+                    style_list = [s for s in style_list if s.endswith("chinese")]
             else:  # cross-lingual
-                style_list = [s for s in style_list if (s.endswith("chinese") if script == "latin" else s.endswith("english"))]
+                if script == "latin":
+                    style_list = [s for s in style_list if s.endswith("chinese")]
+                else:
+                    style_list = [s for s in style_list if s.endswith("english")]
 
-            # lọc style có content tồn tại
+            # Lọc tiếp chỉ giữ style có file content tồn tại
             valid_style_list = []
             for s in style_list:
-                path1 = os.path.join(self.root, self.phase, "TargetImage", s, f"{s}+{content}.jpg")
-                path2 = os.path.join(self.root, self.phase, "TargetImage", s, f"{s}+{content}+.jpg")
+                path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
+                path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
                 if os.path.exists(path1) or os.path.exists(path2):
                     valid_style_list.append(s)
 
-            # nếu không có negative hợp lệ → bỏ qua
-            if len(valid_style_list) > 0:
-                neg_images = []
-                for _ in range(min(self.num_neg, len(valid_style_list))):
-                    neg_style = random.choice(valid_style_list)
-                    valid_style_list.remove(neg_style)
-                    neg_path = os.path.join(self.root, self.phase, "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
-                    if not os.path.exists(neg_path):
-                        neg_path = os.path.join(self.root, self.phase, "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
-                    if os.path.exists(neg_path):
-                        try:
-                            neg_image = Image.open(neg_path).convert("RGB")
-                            if self.transforms:
-                                neg_image = self.transforms[2](neg_image)
-                            neg_images.append(neg_image.unsqueeze(0))
-                        except Exception as e:
-                            print(f"⚠️ Bỏ qua neg image lỗi: {neg_path}, {e}")
-                            continue
+            if len(valid_style_list) == 0:
+                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
 
-                if len(neg_images) > 0:
-                    sample["neg_images"] = torch.cat(neg_images, dim=0)
+            # Chọn num_neg negative images
+            neg_images = []
+            for _ in range(min(self.num_neg, len(valid_style_list))):
+                neg_style = random.choice(valid_style_list)
+                valid_style_list.remove(neg_style)  # tránh trùng
+                neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}.jpg")
+                if not os.path.exists(neg_path):
+                    neg_path = os.path.join(self.root, "train", "TargetImage", neg_style, f"{neg_style}+{content}+.jpg")
+                neg_image = Image.open(neg_path).convert("RGB")
+                if self.transforms:
+                    neg_image = self.transforms[2](neg_image)
+                neg_images.append(neg_image.unsqueeze(0))
+
+            sample["neg_images"] = torch.cat(neg_images, dim=0)
 
         return sample
 
