@@ -13,12 +13,14 @@ from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from diffusers.optimization import get_scheduler
+from diffusers.models import AutoencoderKL
 
 from dataset.font_dataset import FontDataset
 from dataset.collate_fn import CollateFN
 from configs.fontdiffuser import get_parser
 from src import (FontDiffuserModel,
                  ContentPerceptualLoss,
+                 SD3AdapterUNet,
                  build_unet,
                  build_style_encoder,
                  build_content_encoder,
@@ -81,8 +83,7 @@ def main():
         unet = build_unet(args=args)
 
     elif args.unet_type == "sd3":
-        from src.sd3_unet_adapter import SD3AdapterUNet
-        from diffusers.models import AutoencoderKL
+        
 
         unet = SD3AdapterUNet.from_pretrained(
             "stabilityai/stable-diffusion-3-medium",
