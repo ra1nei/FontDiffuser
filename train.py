@@ -88,10 +88,10 @@ def main():
         from diffusers import StableDiffusion3Pipeline
 
         pipe = StableDiffusion3Pipeline.from_pretrained(
-            "stabilityai/stable-diffusion-3-medium",
+            "stabilityai/stable-diffusion-3-medium-diffusers",
             torch_dtype="float16"
         )
-        unet = pipe.unet
+        pipe.to("cuda")
 
         vae = AutoencoderKL.from_pretrained(
             "stabilityai/stable-diffusion-3-medium",
