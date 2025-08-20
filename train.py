@@ -85,10 +85,14 @@ def main():
     elif args.unet_type == "sd3":
         
 
-        unet = SD3AdapterUNet.from_pretrained(
+        from diffusers import StableDiffusion3Pipeline
+
+        pipe = StableDiffusion3Pipeline.from_pretrained(
             "stabilityai/stable-diffusion-3-medium",
-            subfolder="unet"
+            torch_dtype="float16"
         )
+        unet = pipe.unet
+
         vae = AutoencoderKL.from_pretrained(
             "stabilityai/stable-diffusion-3-medium",
             subfolder="vae"
