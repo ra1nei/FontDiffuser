@@ -34,11 +34,7 @@ logger = get_logger(__name__)
 
 def get_args():
     parser = get_parser()
-    parser.add_argument("--unet_type", type=str, default="unet",
-                        choices=["unet", "sd3"],
-                        help="Choose UNet backbone: unet (FontDiffuser) or sd3 (Stable Diffusion 3 adapter)")
     args = parser.parse_args()
-
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
