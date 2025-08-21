@@ -1,7 +1,7 @@
 python sample.py \
     --ckpt_dir="./outputs/global_step_25000" \
     --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/B+.jpg" \
-    --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese+丈.jpg" \
+    --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_chinese/851CHIKARA-DZUYOKU-kanaB-2_chinese+七.jpg" \
     --save_image \
     --save_image_dir="./inference" \
     --device="cuda:0" \
