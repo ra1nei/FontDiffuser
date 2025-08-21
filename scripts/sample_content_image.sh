@@ -1,7 +1,7 @@
 python sample.py \
     --ckpt_dir="./outputs/global_step_25000" \
     --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/七.jpg" \
-    --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_chinese/851CHIKARA-DZUYOKU-kanaB-2_chinese+乱.jpg" \
+    --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/ZhuLang Projection Perspective Bold Figure Chinese Font-Simplified Chinese Fonts_chinese/ZhuLang Projection Perspective Bold Figure Chinese Font-Simplified Chinese Fonts_chinese+鱼" \
     --save_image \
     --save_image_dir="./inference" \
     --device="cuda:0" \
