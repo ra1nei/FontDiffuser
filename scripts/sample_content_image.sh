@@ -1,6 +1,6 @@
 python sample.py \
     --ckpt_dir="./outputs/global_step_25000" \
-    --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/B+.jpg" \
+    --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/七.jpg" \
     --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_english/851CHIKARA-DZUYOKU-kanaB-2_english+B+.jpg" \
     --save_image \
     --save_image_dir="./inference" \
