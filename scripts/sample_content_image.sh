@@ -1,6 +1,6 @@
 python sample.py \
     --ckpt_dir="./outputs/global_step_25000" \
-    --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/A.jpg" \
+    --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/A+.jpg" \
     --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese+丈.jpg" \
     --save_image \
     --save_image_dir="./inference" \
