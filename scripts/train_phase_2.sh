@@ -2,7 +2,7 @@ accelerate launch --num_processes=1 train.py \
     --seed=7 \
     --experience_name="FontDiffuser_Training_Phase_2" \
     --data_root="./thesis-data-jpg/thesis-data-jpg" \
-    --output_dir="outputs" \
+    --output_dir="outputs/phase2" \
     --report_to="wandb" \
     --phase_2 \
     --phase_1_ckpt_dir="phase_1_ckpt" \

@@ -286,7 +286,12 @@ def main():
                             neg_images, 
                             nce_layers=args.nce_layers
                         )
-                        sc_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
+                        # sc_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
+                        intra_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
+
+                        ### TODO
+                        cross_pos_style_embeddings = 
+                        cross_loss = scr.calculate_nce_loss(sample_style_embeddings, cross_pos_style_embeddings, neg_style_embeddings)
                         loss += args.sc_coefficient * sc_loss
                     else:
                         sc_loss = torch.tensor(0.0, device=pred_original_sample_norm.device)

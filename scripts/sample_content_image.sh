@@ -1,9 +1,9 @@
 python sample.py \
-    --ckpt_dir="/kaggle/input/fontdiffuser-ckp" \
-    --content_image_path="data_examples/sampling/example_content.jpg" \
-    --style_image_path="data_examples/sampling/example_style.jpg" \
+    --ckpt_dir="./outputs/global_step_25000" \
+    --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/A.jpg" \
+    --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese/Aa Devil May Cry Art Chinese Font – Simplified Chinese Fonts_chinese+丈.jpg" \
     --save_image \
-    --save_image_dir="/kaggle/working/outputs" \
+    --save_image_dir="./inference" \
     --device="cuda:0" \
     --algorithm_type="dpmsolver++" \
     --guidance_type="classifier-free" \
