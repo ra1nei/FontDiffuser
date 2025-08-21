@@ -7,8 +7,6 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 
-cd "$(dirname "$0")"
-
 module load slurm
 module load python39
 
