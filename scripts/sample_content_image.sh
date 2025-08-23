@@ -1,5 +1,5 @@
 python sample.py \
-    --ckpt_dir="./outputs/global_step_25000" \
+    --ckpt_dir="./outputs/phase1/global_step_10000/" \
     --content_image_path="./thesis-data-jpg/thesis-data-jpg/train/ContentImage/T+.jpg" \
     --style_image_path="./thesis-data-jpg/thesis-data-jpg/train/TargetImage/║║╥╟▒¿╦╬╝≥_english/║║╥╟▒¿╦╬╝≥_english+A+.jpg" \
     --save_image \
