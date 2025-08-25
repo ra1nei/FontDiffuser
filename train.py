@@ -142,11 +142,16 @@ def main():
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
 
     # chia theo ngôn ngữ
-    chinese_folders = [f for f in all_style_folders if "chinese" in f.lower()]
-    english_folders = [f for f in all_style_folders if "english" in f.lower()]
+    def get_lang(folder_name: str):
+        suffix = folder_name.lower().rsplit("_", 1)[-1]  # lấy cụm sau cùng sau dấu "_"
+        if suffix in ("chinese", "english"):
+            return suffix
+        return None
 
-    print(f"Total fonts (Chinese): {len(chinese_folders)}")
-    print(f"Total fonts (English): {len(english_folders)}")
+    chinese_folders = [f for f in all_style_folders if get_lang(f) == "chinese"]
+    english_folders = [f for f in all_style_folders if get_lang(f) == "english"]
+
+    print(f"Chinese: {len(chinese_folders)}, English: {len(english_folders)}")
     print(f"Total fonts (raw): {len(chinese_folders) + len(english_folders)}")
 
     # chọn theo mode
