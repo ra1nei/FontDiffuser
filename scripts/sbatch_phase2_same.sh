@@ -16,4 +16,4 @@ conda activate dang_env
 cd ~/data/fontdiffuser/FontDiffuser
 git pull origin main
 
-bash scripts/train_phase_2.sh
+bash scripts/phase2_unet_same.sh

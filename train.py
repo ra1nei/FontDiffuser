@@ -153,8 +153,14 @@ def main():
         # lấy cả chinese + english
         all_style_folders = [f for f in all_style_folders if detect_lang(f) in ["chinese", "english"]]
 
-    unique_fonts = set(f.split("_")[0] for f in all_style_folders)
+    # DEBUG: check có font english không
+    english_fonts = [f for f in all_style_folders if detect_lang(f) == "english"]
+    if len(english_fonts) > 0:
+        print(f"[Lang Check] Found {len(english_fonts)} English style folders.")
+    else:
+        print("[Lang Check] No English fonts found in current mode.")
 
+    unique_fonts = set(f.split("_")[0] for f in all_style_folders)
     print(f"Total unique fonts: {len(unique_fonts)}")
 
     all_fonts = list(unique_fonts)
