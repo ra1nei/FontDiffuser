@@ -138,7 +138,10 @@ def main():
     
     # -------------------------
     # font selection
+    import os
+    import re
     from collections import defaultdict
+
     train_root = os.path.join(args.data_root, "train", "TargetImage")
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
 
