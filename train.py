@@ -140,43 +140,50 @@ def main():
     # font selection
     train_root = os.path.join(args.data_root, "train", "TargetImage")
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
-    
+
     def detect_lang(folder_name: str):
         if "chinese" in folder_name.lower():
             return "chinese"
         elif "english" in folder_name.lower():
             return "english"
-    if args.lang_mode == "same":
-        # chỉ lấy chinese
-        all_style_folders = [f for f in all_style_folders if detect_lang(f) == "chinese"]
-    elif args.lang_mode == "cross":
-        # lấy cả chinese + english
-        all_style_folders = [f for f in all_style_folders if detect_lang(f) in ["chinese", "english"]]
+        return None
 
-    # DEBUG: check có font english không
-    english_fonts = [f for f in all_style_folders if detect_lang(f) == "english"]
-    if len(english_fonts) > 0:
-        print(f"[Lang Check] Found {len(english_fonts)} English style folders.")
-    else:
-        print("[Lang Check] No English fonts found in current mode.")
+    from collections import defaultdict
+    font2langs = defaultdict(set)
+    for f in all_style_folders:
+        font_name = f.split("_")[0]
+        lang = detect_lang(f)
+        if lang:
+            font2langs[font_name].add(lang)
 
-    unique_fonts = set(f.split("_")[0] for f in all_style_folders)
-    print(f"Total unique fonts: {len(unique_fonts)}")
+    # tổng số font gốc
+    all_fonts = list(font2langs.keys())
+    print(f"Total fonts (raw): {len(all_fonts)}")
 
-    all_fonts = list(unique_fonts)
+    # chỉ giữ font có đủ en+zh
+    paired_fonts = [font for font, langs in font2langs.items() if {"chinese", "english"} <= langs]
+    print(f"Total paired fonts: {len(paired_fonts)}")
+
+    # số font cần lấy = ratio * số gốc
     if args.font_ratio < 1.0:
         n_selected = max(1, int(len(all_fonts) * args.font_ratio))
-        selected_fonts = random.sample(all_fonts, n_selected)
     else:
-        selected_fonts = all_fonts
+        n_selected = len(all_fonts)
 
-    selected_style_folders = []
-    for folder in all_style_folders:
-        font_name = folder.split("_")[0]
-        if font_name in selected_fonts:
-            selected_style_folders.append(folder)
-    
-    print(f"Using {len(selected_fonts)} fonts ({len(selected_style_folders)} style folders)")
+    # không thể vượt quá số paired_fonts
+    n_selected = min(n_selected, len(paired_fonts))
+    selected_fonts = random.sample(paired_fonts, n_selected)
+
+    # lấy đủ cả en+zh folder cho mỗi font
+    selected_style_folders = [f for f in all_style_folders if f.split("_")[0] in selected_fonts]
+
+    # thống kê lại
+    n_chinese = sum(1 for f in selected_style_folders if "chinese" in f.lower())
+    n_english = sum(1 for f in selected_style_folders if "english" in f.lower())
+
+    print(f"Using {len(selected_fonts)} fonts => {len(selected_style_folders)} folders "
+        f"({n_chinese} zh, {n_english} en)")
+
     # -------------------------
 
     train_font_dataset = FontDataset(
@@ -185,7 +192,7 @@ def main():
         transforms=[content_transforms, style_transforms, target_transforms],
         scr=args.phase_2,
         allowed_styles=selected_style_folders,
-        same_ratio=0.3
+        same_ratio=args.same_ratio
     )
     print(f"Total target images: {len(train_font_dataset)}")
 
