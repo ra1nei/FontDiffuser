@@ -142,16 +142,25 @@ def main():
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
 
     def detect_lang(folder_name: str):
-        if "chinese" in folder_name.lower():
+        lower = folder_name.lower()
+        if lower.endswith("_chinese") or "chinese" in lower or lower.endswith("cn"):
             return "chinese"
-        elif "english" in folder_name.lower():
+        elif lower.endswith("_english") or lower.endswith("_en") or lower.endswith("_eng"):
             return "english"
         return None
+
+    def get_font_name(folder_name: str):
+        lower = folder_name.lower()
+        if lower.endswith("_english"):
+            return folder_name[: -len("_english")]
+        elif lower.endswith("_chinese"):
+            return folder_name[: -len("_chinese")]
+        return folder_name
 
     from collections import defaultdict
     font2langs = defaultdict(set)
     for f in all_style_folders:
-        font_name = f.split("_")[0]
+        font_name = get_font_name(f)
         lang = detect_lang(f)
         if lang:
             font2langs[font_name].add(lang)
@@ -167,12 +176,12 @@ def main():
     # lấy folder theo lang_mode
     if args.lang_mode == "same":
         # chỉ cần Chinese
-        selected_style_folders = [f for f in all_style_folders 
-                                if f.split("_")[0] in paired_fonts and "chinese" in f.lower()]
+        selected_style_folders = [f for f in all_style_folders
+                                if get_font_name(f) in paired_fonts and "chinese" in f.lower()]
     elif args.lang_mode == "cross":
         # lấy cả Chinese + English
-        selected_style_folders = [f for f in all_style_folders 
-                                if f.split("_")[0] in paired_fonts]
+        selected_style_folders = [f for f in all_style_folders
+                                if get_font_name(f) in paired_fonts]
     else:
         raise ValueError(f"Unsupported lang_mode: {args.lang_mode}")
 
