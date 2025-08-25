@@ -38,7 +38,8 @@ def get_parser():
     )
     parser.add_argument("--unet_type", type=str, default="unet", choices=["unet", "sd3"], 
                     help="Choose which UNet backbone to use: unet (FontDiffuser)/sd3 (Stable Diffusion 3 adapter)")
-
+    parser.add_argument("--lang_mode", type=str, default="cross", choices=["cross", "same"],
+                    help="train same or cross-lingual")
 
     parser.add_argument("--phase_2", action="store_true", help="Training in phase 2 using SCR module.")
     parser.add_argument("--phase_1_ckpt_dir", type=str, default=None, help="The trained ckpt directory during phase 1.")

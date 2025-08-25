@@ -140,7 +140,21 @@ def main():
     # font selection
     train_root = os.path.join(args.data_root, "train", "TargetImage")
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
+    
+    def detect_lang(folder_name: str):
+        if "chinese" in folder_name.lower():
+            return "chinese"
+        elif "english" in folder_name.lower():
+            return "english"
+    if args.lang_mode == "same":
+        # chỉ lấy chinese
+        all_style_folders = [f for f in all_style_folders if detect_lang(f) == "chinese"]
+    elif args.lang_mode == "cross":
+        # lấy cả chinese + english
+        all_style_folders = [f for f in all_style_folders if detect_lang(f) in ["chinese", "english"]]
+
     unique_fonts = set(f.split("_")[0] for f in all_style_folders)
+
     print(f"Total unique fonts: {len(unique_fonts)}")
 
     all_fonts = list(unique_fonts)
@@ -155,10 +169,10 @@ def main():
         font_name = folder.split("_")[0]
         if font_name in selected_fonts:
             selected_style_folders.append(folder)
+    
+    print(f"Using {len(selected_fonts)} fonts ({len(selected_style_folders)} style folders)")
     # -------------------------
 
-    print(f"Using {len(selected_fonts)} fonts ({len(selected_style_folders)} style folders)")
-    
     train_font_dataset = FontDataset(
         args=args,
         phase='train', 
