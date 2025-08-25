@@ -138,29 +138,25 @@ def main():
     
     # -------------------------
     # font selection
+    from collections import defaultdict
     train_root = os.path.join(args.data_root, "train", "TargetImage")
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
 
     def detect_lang(folder_name: str):
-        lower = folder_name.lower()
-        if lower.endswith("_chinese") or "chinese" in lower or lower.endswith("cn"):
+        name = folder_name.lower()
+        if "chinese" in name:
             return "chinese"
-        elif lower.endswith("_english") or lower.endswith("_en") or lower.endswith("_eng"):
+        elif "english" in name:
             return "english"
         return None
 
-    def get_font_name(folder_name: str):
-        lower = folder_name.lower()
-        if lower.endswith("_english"):
-            return folder_name[: -len("_english")]
-        elif lower.endswith("_chinese"):
-            return folder_name[: -len("_chinese")]
-        return folder_name
+    def extract_font_name(folder_name: str):
+        # bỏ hậu tố _chinese / _english để gom chung về 1 font
+        return re.sub(r'_(chinese|english).*', '', folder_name, flags=re.IGNORECASE)
 
-    from collections import defaultdict
     font2langs = defaultdict(set)
     for f in all_style_folders:
-        font_name = get_font_name(f)
+        font_name = extract_font_name(f)
         lang = detect_lang(f)
         if lang:
             font2langs[font_name].add(lang)
@@ -176,12 +172,12 @@ def main():
     # lấy folder theo lang_mode
     if args.lang_mode == "same":
         # chỉ cần Chinese
-        selected_style_folders = [f for f in all_style_folders
-                                if get_font_name(f) in paired_fonts and "chinese" in f.lower()]
+        selected_style_folders = [f for f in all_style_folders 
+                                if extract_font_name(f) in paired_fonts and "chinese" in f.lower()]
     elif args.lang_mode == "cross":
         # lấy cả Chinese + English
-        selected_style_folders = [f for f in all_style_folders
-                                if get_font_name(f) in paired_fonts]
+        selected_style_folders = [f for f in all_style_folders 
+                                if extract_font_name(f) in paired_fonts]
     else:
         raise ValueError(f"Unsupported lang_mode: {args.lang_mode}")
 
@@ -191,6 +187,7 @@ def main():
 
     print(f"Using {len(paired_fonts)} fonts => {len(selected_style_folders)} folders "
         f"({n_chinese} zh, {n_english} en)")
+
     # -------------------------
 
     train_font_dataset = FontDataset(
