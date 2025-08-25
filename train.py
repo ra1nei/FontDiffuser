@@ -164,26 +164,24 @@ def main():
     paired_fonts = [font for font, langs in font2langs.items() if {"chinese", "english"} <= langs]
     print(f"Total paired fonts: {len(paired_fonts)}")
 
-    # số font cần lấy = ratio * số gốc
-    if args.font_ratio < 1.0:
-        n_selected = max(1, int(len(all_fonts) * args.font_ratio))
+    # lấy folder theo lang_mode
+    if args.lang_mode == "same":
+        # chỉ cần Chinese
+        selected_style_folders = [f for f in all_style_folders 
+                                if f.split("_")[0] in paired_fonts and "chinese" in f.lower()]
+    elif args.lang_mode == "cross":
+        # lấy cả Chinese + English
+        selected_style_folders = [f for f in all_style_folders 
+                                if f.split("_")[0] in paired_fonts]
     else:
-        n_selected = len(all_fonts)
-
-    # không thể vượt quá số paired_fonts
-    n_selected = min(n_selected, len(paired_fonts))
-    selected_fonts = random.sample(paired_fonts, n_selected)
-
-    # lấy đủ cả en+zh folder cho mỗi font
-    selected_style_folders = [f for f in all_style_folders if f.split("_")[0] in selected_fonts]
+        raise ValueError(f"Unsupported lang_mode: {args.lang_mode}")
 
     # thống kê lại
     n_chinese = sum(1 for f in selected_style_folders if "chinese" in f.lower())
     n_english = sum(1 for f in selected_style_folders if "english" in f.lower())
 
-    print(f"Using {len(selected_fonts)} fonts => {len(selected_style_folders)} folders "
+    print(f"Using {len(paired_fonts)} fonts => {len(selected_style_folders)} folders "
         f"({n_chinese} zh, {n_english} en)")
-
     # -------------------------
 
     train_font_dataset = FontDataset(

@@ -32,10 +32,6 @@ def get_parser():
                         help="The channels of the fisrt layer output of content encoder.",)
     
     # Training
-    parser.add_argument(
-        "--font_ratio", type=float, default=1.0,
-        help="Tỷ lệ font dùng để train (0~1), ví dụ 0.5 nghĩa là lấy 50% font, nếu lấy font thì phải đủ eng + chinese"
-    )
     parser.add_argument("--unet_type", type=str, default="unet", choices=["unet", "sd3"], 
                     help="Choose which UNet backbone to use: unet (FontDiffuser)/sd3 (Stable Diffusion 3 adapter)")
     parser.add_argument("--lang_mode", type=str, default="cross", choices=["cross", "same"],
