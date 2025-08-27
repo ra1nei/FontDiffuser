@@ -124,41 +124,63 @@ class FontDataset(Dataset):
 
         ### TODO
         if self.scr:
-            # Lấy danh sách style khác style hiện tại
-            style_list = [s for s in self.style_to_images if s != style]
+            # Get neg image from the different style of the same content
+            style_list = list(self.style_to_images.keys())
+            style_index = style_list.index(style)
+            style_list.pop(style_index)
+            choose_neg_names = []
+            for i in range(self.num_neg):
+                choose_style = random.choice(style_list)
+                choose_index = style_list.index(choose_style)
+                style_list.pop(choose_index)
+                choose_neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                choose_neg_names.append(choose_neg_name)
 
-            # Chỉ giữ style cùng script (latin hoặc chinese)
-            if script == "latin":
-                style_list = [s for s in style_list if s.endswith("english")]
-            else:
-                style_list = [s for s in style_list if s.endswith("chinese")]
-
-            # Lọc tiếp chỉ giữ style có file content tồn tại
-            valid_style_list = []
-            for s in style_list:
-                path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
-                path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
-                if os.path.exists(path1):
-                    valid_style_list.append(path1)
-                elif os.path.exists(path2):
-                    valid_style_list.append(path2)
-
-            if len(valid_style_list) == 0:
-                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
-
-            # Random chọn path cho neg images
-            neg_paths = random.sample(valid_style_list, k=min(self.num_neg, len(valid_style_list)))
-
-            # Load ảnh
-            neg_images = []
-            for p in neg_paths:
-                neg_image = Image.open(p).convert("RGB")
+            # Load neg_images
+            for i, neg_name in enumerate(choose_neg_names):
+                neg_image = Image.open(neg_name).convert("RGB")
                 if self.transforms is not None:
                     neg_image = self.transforms[2](neg_image)
-                neg_images.append(neg_image[None, :, :, :])  # thêm chiều batch
+                if i == 0:
+                    neg_images = neg_image[None, :, :, :]
+                else:
+                    neg_images = torch.cat([neg_images, neg_image[None, :, :, :]], dim=0)
+            sample["neg_images"] = neg_images
+            # # Lấy danh sách style khác style hiện tại
+            # style_list = [s for s in self.style_to_images if s != style]
 
-            # Ghép thành 1 tensor [num_neg, C, H, W]
-            sample["neg_images"] = torch.cat(neg_images, dim=0)
+            # # Chỉ giữ style cùng script (latin hoặc chinese)
+            # if script == "latin":
+            #     style_list = [s for s in style_list if s.endswith("english")]
+            # else:
+            #     style_list = [s for s in style_list if s.endswith("chinese")]
+
+            # # Lọc tiếp chỉ giữ style có file content tồn tại
+            # valid_style_list = []
+            # for s in style_list:
+            #     path1 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}.jpg")
+            #     path2 = os.path.join(self.root, "train", "TargetImage", s, f"{s}+{content}+.jpg")
+            #     if os.path.exists(path1):
+            #         valid_style_list.append(path1)
+            #     elif os.path.exists(path2):
+            #         valid_style_list.append(path2)
+
+            # if len(valid_style_list) == 0:
+            #     raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content}")
+
+            # # Random chọn path cho neg images
+            # neg_paths = random.sample(valid_style_list, k=min(self.num_neg, len(valid_style_list)))
+
+            # # Load ảnh
+            # neg_images = []
+            # for p in neg_paths:
+            #     neg_image = Image.open(p).convert("RGB")
+            #     if self.transforms is not None:
+            #         neg_image = self.transforms[2](neg_image)
+            #     neg_images.append(neg_image[None, :, :, :])  # thêm chiều batch
+
+            # # Ghép thành 1 tensor [num_neg, C, H, W]
+            # sample["neg_images"] = torch.cat(neg_images, dim=0)
 
         return sample
 
