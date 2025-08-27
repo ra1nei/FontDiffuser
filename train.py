@@ -173,9 +173,9 @@ def main():
         args=args,
         phase='train', 
         transforms=[content_transforms, style_transforms, target_transforms],
-        scr=args.phase_2,
+        scr=args.phase_2
         # allowed_styles=selected_style_folders,
-        same_ratio=args.same_ratio
+        # same_ratio=args.same_ratio
     )
     print(f"Total target images: {len(train_font_dataset)}")
 
