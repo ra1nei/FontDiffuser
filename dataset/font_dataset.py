@@ -128,24 +128,34 @@ class FontDataset(Dataset):
             style_list = list(self.style_to_images.keys())
             style_index = style_list.index(style)
             style_list.pop(style_index)
+
             choose_neg_names = []
             for i in range(self.num_neg):
+                if not style_list:
+                    break  # Hết style để chọn
                 choose_style = random.choice(style_list)
-                choose_index = style_list.index(choose_style)
-                style_list.pop(choose_index)
-                choose_neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
-                choose_neg_names.append(choose_neg_name)
+                style_list.remove(choose_style)
+
+                neg_path = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                # Chỉ lấy nếu file tồn tại
+                if os.path.exists(neg_path):
+                    choose_neg_names.append(neg_path)
 
             # Load neg_images
-            for i, neg_name in enumerate(choose_neg_names):
-                neg_image = Image.open(neg_name).convert("RGB")
-                if self.transforms is not None:
-                    neg_image = self.transforms[2](neg_image)
-                if i == 0:
-                    neg_images = neg_image[None, :, :, :]
-                else:
-                    neg_images = torch.cat([neg_images, neg_image[None, :, :, :]], dim=0)
-            sample["neg_images"] = neg_images
+            neg_images = []
+            for neg_name in choose_neg_names:
+                try:
+                    neg_image = Image.open(neg_name).convert("RGB")
+                    if self.transforms is not None:
+                        neg_image = self.transforms[2](neg_image)
+                    neg_images.append(neg_image[None, :, :, :])
+                except Exception as e:
+                    print(f"Skipped {neg_name} because: {e}")
+                    continue
+
+            if len(neg_images) > 0:
+                neg_images = torch.cat(neg_images, dim=0)
+                sample["neg_images"] = neg_images
             # # Lấy danh sách style khác style hiện tại
             # style_list = [s for s in self.style_to_images if s != style]
 
