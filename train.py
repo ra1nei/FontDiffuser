@@ -287,24 +287,18 @@ def main():
                 loss = diff_loss + args.perceptual_coefficient * percep_loss + args.offset_coefficient * offset_loss
 
                 if args.phase_2:
-                    if "neg_images" in samples and samples["neg_images"] is not None:
-                        neg_images = samples["neg_images"]
-
-                        sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
-                            pred_original_sample_norm, 
-                            target_images, 
-                            neg_images, 
-                            nce_layers=args.nce_layers
-                        )
-                        sc_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
-                        # intra_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
-
-                        ### TODO
-                        # cross_pos_style_embeddings = 
-                        # cross_loss = scr.calculate_nce_loss(sample_style_embeddings, cross_pos_style_embeddings, neg_style_embeddings)
-                        loss += args.sc_coefficient * sc_loss
-                    else:
-                        sc_loss = torch.tensor(0.0, device=pred_original_sample_norm.device)
+                    neg_images = samples["neg_images"]
+                    # sc loss
+                    sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
+                        pred_original_sample_norm, 
+                        target_images, 
+                        neg_images, 
+                        nce_layers=args.nce_layers)
+                    sc_loss = scr.calculate_nce_loss(
+                        sample_s=sample_style_embeddings,
+                        pos_s=pos_style_embeddings,
+                        neg_s=neg_style_embeddings)
+                    loss += args.sc_coefficient * sc_loss
 
                 avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
                 train_loss += avg_loss.item() / args.gradient_accumulation_steps
