@@ -149,7 +149,16 @@ class FontDataset(Dataset):
             # Random chọn path cho neg images
             neg_paths = random.sample(valid_style_list, k=min(self.num_neg, len(valid_style_list)))
 
-            sample["neg_paths"] = neg_paths   # ⚡ chỉ lưu đường dẫn, không load ảnh
+            # Load ảnh
+            neg_images = []
+            for p in neg_paths:
+                neg_image = Image.open(p).convert("RGB")
+                if self.transforms is not None:
+                    neg_image = self.transforms[2](neg_image)
+                neg_images.append(neg_image[None, :, :, :])  # thêm chiều batch
+
+            # Ghép thành 1 tensor [num_neg, C, H, W]
+            sample["neg_images"] = torch.cat(neg_images, dim=0)
 
         return sample
 
