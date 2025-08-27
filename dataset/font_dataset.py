@@ -60,67 +60,35 @@ class FontDataset(Dataset):
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
-        target_image_name = os.path.basename(target_image_path)
+        target_image_name = target_image_path.split('/')[-1]
+        style, content = target_image_name.split('.')[0].split('+')
+        
+        # Read content image
+        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_image = Image.open(content_image_path).convert('RGB')
 
-        # Bỏ dấu '+' ở cuối nếu có
-        name = target_image_name.split('.')[0].rstrip('+')
-
-        if '+' not in name:
-            raise ValueError(f"❌ Tên ảnh không hợp lệ (không có dấu '+'): {target_image_name}")
-
-        last_plus_index = name.rfind('+')
-        style = name[:last_plus_index]
-        content = name[last_plus_index + 1:]
-
-        if not content:
-            raise ValueError(f"❌ Tên ảnh bị thiếu content glyph: {target_image_name}")
-
-        # --- lấy content image ---
-        content_dir = os.path.join(self.root, self.phase, "ContentImage")
-        content_image_path = os.path.join(content_dir, f"{content}.jpg")
-        if not os.path.exists(content_image_path):
-            fallback_path = os.path.join(content_dir, f"{content}+.jpg")
-            if os.path.exists(fallback_path):
-                content_image_path = fallback_path
-            else:
-                raise FileNotFoundError(f"❌ Không tìm thấy file content image: {content_image_path} hoặc {fallback_path}")
-
-        # --- quyết định same hay cross ---
-        script = self.detect_script(style)
-        if random.random() < self.same_ratio:
-            # same-lingual
-            if script == "latin":
-                style_folder = random.choice(self.latin_fonts)
-            else:
-                style_folder = random.choice(self.chinese_fonts)
-        else:
-            # cross-lingual
-            if script == "latin":
-                style_folder = random.choice(self.chinese_fonts)
-            else:
-                style_folder = random.choice(self.latin_fonts)
-
-        # --- load style + target ---
-        style_image = Image.open(random.choice([
-            path for path in self.style_to_images[style_folder]
-        ])).convert("RGB")
-
+        # Random sample used for style image
+        images_related_style = self.style_to_images[style].copy()
+        images_related_style.remove(target_image_path)
+        style_image_path = random.choice(images_related_style)
+        style_image = Image.open(style_image_path).convert("RGB")
+        
+        # Read target image
         target_image = Image.open(target_image_path).convert("RGB")
-        content_image = Image.open(content_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
 
-        if self.transforms:
+        if self.transforms is not None:
             content_image = self.transforms[0](content_image)
             style_image = self.transforms[1](style_image)
             target_image = self.transforms[2](target_image)
-
+        
         sample = {
             "content_image": content_image,
             "style_image": style_image,
             "target_image": target_image,
             "target_image_path": target_image_path,
-            "nonorm_target_image": nonorm_target_image,
-        }
+            "nonorm_target_image": nonorm_target_image}
+
 
         ### TODO
         if self.scr:
