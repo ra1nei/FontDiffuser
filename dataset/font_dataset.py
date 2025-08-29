@@ -140,33 +140,56 @@ class FontDataset(Dataset):
             "nonorm_target_image": nonorm_target_image}
         
         if self.scr:
-            # Get neg images from different styles of the same content
             style_list = list(self.style_to_images.keys())
             if style in style_list:
                 style_list.remove(style)
 
             choose_neg_names = []
-            for i in range(self.num_neg):
-                if not style_list:
+            chosen_contents = [content] # Theo dõi các content đã thử
+
+            while len(choose_neg_names) < self.num_neg:
+                # Lấy danh sách các style khác
+                current_style_list = style_list.copy()
+                if not current_style_list:
+                    break # Không còn style nào để thử
+
+                # Cố gắng lấy negative images cho content hiện tại
+                temp_neg_names = []
+                num_to_get = self.num_neg - len(choose_neg_names)
+                
+                # Chọn ngẫu nhiên num_to_get style
+                try:
+                    # Sử dụng random.sample để tránh lỗi 'x not in list'
+                    # và chọn số lượng ngẫu nhiên tối đa có thể
+                    chosen_styles = random.sample(current_style_list, min(num_to_get, len(current_style_list)))
+                except ValueError:
+                    # Trường hợp đặc biệt nếu danh sách rỗng
                     break
-                choose_style = random.choice(style_list)
-                style_list.remove(choose_style)
 
-                neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
-                neg_path2 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}+.jpg"
+                for choose_style in chosen_styles:
+                    neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                    neg_path2 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}+.jpg"
+                    
+                    if os.path.exists(neg_path1):
+                        temp_neg_names.append(neg_path1)
+                    elif os.path.exists(neg_path2):
+                        temp_neg_names.append(neg_path2)
 
-                if os.path.exists(neg_path1):
-                    choose_neg_names.append(neg_path1)
-                    print(f"  --> Found negative image path: {neg_path1}")
-                    print(f"  --> Content: {content}")
-                elif os.path.exists(neg_path2):
-                    choose_neg_names.append(neg_path2)
-                    print(f"  --> Found negative image path: {neg_path2}")
-                    print(f"  --> Content: {content}")
-                else:
-                    print(f"  --> No negative image found for this style: {choose_style}")
-                    continue
+                choose_neg_names.extend(temp_neg_names)
 
+                if len(choose_neg_names) < self.num_neg:
+                    # Nếu không đủ, tìm một content khác để thử
+                    all_contents = [os.path.splitext(f)[0].split('+')[-1] for f in self.target_images]
+                    available_contents = [c for c in all_contents if c not in chosen_contents]
+                    if not available_contents:
+                        # Không còn content nào để thử
+                        break
+                    
+                    # Chọn content ngẫu nhiên mới
+                    content = random.choice(available_contents)
+                    chosen_contents.append(content)
+
+            # Xử lý các neg images đã thu thập được
             neg_images = []
             for neg_name in choose_neg_names:
                 neg_image = Image.open(neg_name).convert("RGB")
@@ -177,8 +200,7 @@ class FontDataset(Dataset):
             if len(neg_images) > 0:
                 sample["neg_images"] = torch.cat(neg_images, dim=0)
             else:
-                # nếu không có negative nào thì raise warning
-                raise FileNotFoundError(f"❌ No valid negative images found for content {content}")
+                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content} sau khi thử nhiều lần.")
 
         return sample
 
