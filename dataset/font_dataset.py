@@ -87,6 +87,10 @@ class FontDataset(Dataset):
             style, lang, content = "", "", ""
             print(f"Cảnh báo: Tên file '{target_image_name}' không đúng định dạng. Lỗi: {e}")
 
+        print("style:", style)
+        print("lang:", lang)
+        print("content:", content)
+        
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
