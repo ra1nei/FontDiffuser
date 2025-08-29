@@ -150,6 +150,28 @@ class FontDataset(Dataset):
                 if not style_list:
                     break
                 choose_style = random.choice(style_list)
+                # DEBUG
+                for i in range(self.num_neg):
+                    if not style_list:
+                        break
+                    choose_style = random.choice(style_list)
+                    style_list.remove(choose_style)
+
+                    # Thêm câu lệnh print này để xem đường dẫn nào được chọn
+                    print(f"Chosen negative style: {choose_style}")
+
+                    neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                    neg_path2 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}+.jpg"
+
+                    if os.path.exists(neg_path1):
+                        choose_neg_names.append(neg_path1)
+                        print(f"  --> Found negative image path: {neg_path1}")
+                    elif os.path.exists(neg_path2):
+                        choose_neg_names.append(neg_path2)
+                        print(f"  --> Found negative image path: {neg_path2}")
+                    else:
+                        print(f"  --> No negative image found for this style: {choose_style}")
+                        continue
                 style_list.remove(choose_style)
 
                 neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
