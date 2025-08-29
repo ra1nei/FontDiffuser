@@ -46,10 +46,11 @@ class FontDataset(Dataset):
     def get_script(self, name: str):
         if name.endswith("_chinese"):
             return "chinese"
-        elif name.endswith("_englisj"):
+        elif name.endswith("_english"):
             return "latin"
         else:
             print("Error")
+            return None
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
@@ -61,7 +62,7 @@ class FontDataset(Dataset):
         content_image = Image.open(content_image_path).convert('RGB')
 
         if self.pair_mode == "same":
-            # Same: chọn style khác nhưng cùng co`ntent, cùng script (vd: Chinese)
+            # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
             images_related_style = self.style_to_images[style].copy()
             images_related_style.remove(target_image_path)
             style_image_path = random.choice(images_related_style)
@@ -73,7 +74,7 @@ class FontDataset(Dataset):
             else:
                 valid_styles = [s for s in self.style_to_images if not s.isascii()]
 
-            # bỏ current style
+            # Remove current style
             valid_styles = [s for s in valid_styles if s != style]
 
             choose_style = random.choice(valid_styles)
