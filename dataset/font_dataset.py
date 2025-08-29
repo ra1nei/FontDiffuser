@@ -32,10 +32,15 @@ class FontDataset(Dataset):
 
     def get_path(self):
         self.target_images = []
-        # images with related style  
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
-        for style in os.listdir(target_image_dir):
+
+        # Lọc danh sách styles
+        styles_to_process = os.listdir(target_image_dir)
+        if self.lang_mode == "same":
+            styles_to_process = [s for s in styles_to_process if s.endswith("_chinese")]
+
+        for style in styles_to_process:
             images_related_style = []
             for img in os.listdir(f"{target_image_dir}/{style}"):
                 img_path = f"{target_image_dir}/{style}/{img}"
