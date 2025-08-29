@@ -35,10 +35,14 @@ def get_parser():
     parser.add_argument("--unet_type", type=str, default="unet", choices=["unet", "sd3"], 
                     help="Choose which UNet backbone to use: unet (FontDiffuser)/sd3 (Stable Diffusion 3 adapter)")
     parser.add_argument("--lang_mode", type=str, default="cross", choices=["cross", "same"],
-                    help="train same or cross-lingual")
+                    help="train same or cross-lingual for phase 1")
     parser.add_argument(
         "--same_ratio", type=float, default=0.5,
         help="Xác suất chọn sample same-lingual (0.0=chỉ cross, 1.0=chỉ same)."
+    )
+    parser.add_argument(
+        "--pair_mode", type=str, default="same", choices=["cross", "same"],
+        help="train same or cross-lingual for phase 2."
     )
 
     parser.add_argument("--phase_2", action="store_true", help="Training in phase 2 using SCR module.")
