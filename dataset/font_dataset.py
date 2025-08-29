@@ -16,12 +16,12 @@ def get_nonorm_transform(resolution):
 class FontDataset(Dataset):
     """The dataset of font generation  
     """
-    def __init__(self, args, phase, transforms=None, scr=False, pair_mode="same"):
+    def __init__(self, args, phase, transforms=None, scr=False, lang_mode="same"):
         super().__init__()
         self.root = args.data_root
         self.phase = phase # ví dụ: "train_same", "train_cross"
         self.scr = scr
-        self.pair_mode = args.pair_mode
+        self.lang_mode = args.lang_mode
         if self.scr:
             self.num_neg = args.num_neg
         
@@ -61,13 +61,13 @@ class FontDataset(Dataset):
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
 
-        if self.pair_mode == "same":
+        if self.lang_mode == "same":
             # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
             images_related_style = self.style_to_images[style].copy()
             images_related_style.remove(target_image_path)
             style_image_path = random.choice(images_related_style)
 
-        elif self.pair_mode == "cross":
+        elif self.lang_mode == "cross":
             # Cross: chọn style khác nhưng cùng script với content
             if content.isascii():  
                 valid_styles = [s for s in self.style_to_images if s.isascii()]
