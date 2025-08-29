@@ -102,26 +102,39 @@ class FontDataset(Dataset):
         if self.scr:
             # Get neg images from different styles of the same content
             style_list = list(self.style_to_images.keys())
-            print(style_list)
-            style_index = style_list.index(style)
-            style_list.pop(style_index)
+            if style in style_list:
+                style_list.remove(style)
+
             choose_neg_names = []
             for i in range(self.num_neg):
+                if not style_list:
+                    break
                 choose_style = random.choice(style_list)
                 style_list.remove(choose_style)
-                choose_neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
-                choose_neg_names.append(choose_neg_name)
 
-            # Load neg images
-            for i, neg_name in enumerate(choose_neg_names):
+                neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
+                neg_path2 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}+.jpg"
+
+                if os.path.exists(neg_path1):
+                    choose_neg_names.append(neg_path1)
+                elif os.path.exists(neg_path2):
+                    choose_neg_names.append(neg_path2)
+                else:
+                    # bỏ qua nếu font thiếu glyph
+                    continue
+
+            neg_images = []
+            for neg_name in choose_neg_names:
                 neg_image = Image.open(neg_name).convert("RGB")
                 if self.transforms is not None:
                     neg_image = self.transforms[2](neg_image)
-                if i == 0:
-                    neg_images = neg_image[None, :, :, :]
-                else:
-                    neg_images = torch.cat([neg_images, neg_image[None, :, :, :]], dim=0)
-            sample["neg_images"] = neg_images
+                neg_images.append(neg_image[None, :, :, :])
+
+            if len(neg_images) > 0:
+                sample["neg_images"] = torch.cat(neg_images, dim=0)
+            else:
+                # nếu không có negative nào thì raise warning
+                raise FileNotFoundError(f"❌ No valid negative images found for content {content}")
 
         return sample
 
