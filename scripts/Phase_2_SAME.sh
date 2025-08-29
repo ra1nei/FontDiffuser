@@ -1,0 +1,31 @@
+accelerate launch --num_processes=1 train.py \
+    --seed=7 \
+    --experience_name="Phase_2_SAME" \
+    --data_root "./thesis-data-jpg/thesis-data-jpg" \
+    --output_dir="outputs/phase2_same" \
+    --report_to="wandb" \
+    --phase_2 \
+    --phase_1_ckpt_dir="phase_1_same_ckpt" \
+    --scr_ckpt_path="ckpt/scr_210000.pth" \
+    --sc_coefficient=0.01 \
+    --num_neg=16 \
+    --resolution=64 \
+    --style_image_size=64 \
+    --content_image_size=64 \
+    --content_encoder_downsample_size=3 \
+    --channel_attn=True \
+    --content_start_channel=64 \
+    --style_start_channel=64 \
+    --train_batch_size=16 \
+    --perceptual_coefficient=0.01 \
+    --offset_coefficient=0.5 \
+    --max_train_steps=15000 \
+    --ckpt_interval=3000 \
+    --gradient_accumulation_steps=1 \
+    --log_interval=50 \
+    --learning_rate=1e-5 \
+    --lr_scheduler="constant" \
+    --lr_warmup_steps=1000 \
+    --drop_prob=0.1 \
+    --mixed_precision="no" \
+    --lang_mode="same"

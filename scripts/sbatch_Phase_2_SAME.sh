@@ -7,17 +7,13 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 
-cd "$(dirname "$0")"
-
 module load slurm
 module load python39
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate dang_env
 
-rm -f ../../outputs/FontDiffuser/fontdiffuser_training.log
-
 cd ~/data/fontdiffuser/FontDiffuser
 git pull origin main
 
-bash scripts/phase1_unet_same.sh
+bash scripts/Phase_2_SAME.sh
