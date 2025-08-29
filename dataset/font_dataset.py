@@ -102,6 +102,7 @@ class FontDataset(Dataset):
         if self.scr:
             # Get neg images from different styles of the same content
             style_list = list(self.style_to_images.keys())
+            print(style_list)
             style_index = style_list.index(style)
             style_list.pop(style_index)
             choose_neg_names = []
