@@ -54,15 +54,17 @@ class FontDataset(Dataset):
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
-        print(f"target_image_path: {target_image_path}")
         target_image_name = target_image_path.split('/')[-1]
-        print(f"target_image_name: {target_image_name}")
-        filename = target_image_name.split('.')[0]
-        print(f"filename: {filename}")
-        style_lang, content = filename.split('+', 1)
-        style, lang = style_lang.split('_', 1)
+        filename, _ = os.path.splitext(target_image_name)
+        # tách từ cuối lên
+        content = filename.split('+')[-1]        # ví dụ: "钱"
+        lang = filename.split('+')[-2].lstrip('_')  # ví dụ: "chinese"
+        style = '+'.join(filename.split('+')[:-2])  # phần còn lại phía trước
 
-        print("Style:", style, "Content:", content)
+        print("style:", style)
+        print("lang:", lang)
+        print("content:", content)
+
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
