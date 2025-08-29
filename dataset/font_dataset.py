@@ -90,14 +90,14 @@ class FontDataset(Dataset):
         print("style:", style)
         print("lang:", lang)
         print("content:", content)
-        
+
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
 
         if self.lang_mode == "same":
             # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
-            images_related_style = self.style_to_images[style+'_'+lang].copy()
+            images_related_style = self.style_to_images[style+lang].copy()
             images_related_style.remove(target_image_path)
             style_image_path = random.choice(images_related_style)
 
