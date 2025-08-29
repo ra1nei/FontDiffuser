@@ -57,23 +57,35 @@ class FontDataset(Dataset):
         target_image_name = target_image_path.split('/')[-1]
 
         # DEBUG
-        filename, _ = os.path.splitext(target_image_name)
-        print(filename)
-        # content = phần cuối
-        content = filename.split('+')[-1]
+        filename = os.path.splitext(target_image_name)[0]
 
-        # style_lang = phần trước content
-        style_lang = filename.split('+')[-2]
+        try:
+            # Tìm vị trí của dấu '+' cuối cùng để tách content
+            last_plus_index = filename.rfind('+')
+            
+            # Nếu không tìm thấy dấu '+', coi toàn bộ là content
+            if last_plus_index == -1:
+                return "", "", filename
 
-        # tách style và lang
-        if '_' in style_lang:
-            style, lang = style_lang.split('_', 1)
-        else:
-            style, lang = style_lang, ""  # fallback nếu không có "_"
+            # Tách phần style_lang và content
+            style_lang_part = filename[:last_plus_index]
+            content = filename[last_plus_index + 1:]
 
-        print("style:", style)
-        print("lang:", lang)
-        print("content:", content)
+            # Tìm vị trí của dấu '_' cuối cùng để tách style và lang
+            last_underscore_index = style_lang_part.rfind('_')
+            
+            # Nếu không tìm thấy dấu '_', coi toàn bộ phần trước dấu '+' là style
+            if last_underscore_index == -1:
+                style = style_lang_part
+                lang = ""
+            else:
+                style = style_lang_part[:last_underscore_index]
+                lang = style_lang_part[last_underscore_index:]
+
+        except Exception as e:
+            # Xử lý trường hợp tên file không đúng định dạng
+            style, lang, content = "", "", ""
+            print(f"Cảnh báo: Tên file '{target_image_name}' không đúng định dạng. Lỗi: {e}")
 
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
