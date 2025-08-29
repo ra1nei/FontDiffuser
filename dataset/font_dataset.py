@@ -55,9 +55,10 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         target_image_name = target_image_path.split('/')[-1]
-        
-        filename, _ = os.path.splitext(target_image_name)
 
+        # DEBUG
+        filename, _ = os.path.splitext(target_image_name)
+        print(filename)
         # content = phần cuối
         content = filename.split('+')[-1]
 
