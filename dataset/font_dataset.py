@@ -92,10 +92,6 @@ class FontDataset(Dataset):
             style, lang, content = "", "", ""
             print(f"Cảnh báo: Tên file '{target_image_name}' không đúng định dạng. Lỗi: {e}")
 
-        print("style:", style)
-        print("lang:", lang)
-        print("content:", content)
-
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
@@ -103,7 +99,6 @@ class FontDataset(Dataset):
         if self.lang_mode == "same":
             # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
             images_related_style = self.style_to_images[style+lang].copy()
-            # print(images_related_style)
             images_related_style.remove(target_image_path)
             style_image_path = random.choice(images_related_style)
 
