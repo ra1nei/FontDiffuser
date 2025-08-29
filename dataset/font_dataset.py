@@ -55,7 +55,10 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         target_image_name = target_image_path.split('/')[-1]
-        style, content = target_image_name.split('.')[0].split('+')
+        filename = target_image_name.split('.')[0]
+        style_lang, content = filename.split('+', 1)
+        style, lang = style_lang.split('_', 1)
+
         print("Style:", style, "Content:", content)
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
