@@ -56,7 +56,7 @@ class FontDataset(Dataset):
         target_image_path = self.target_images[index]
         target_image_name = target_image_path.split('/')[-1]
         style, content = target_image_name.split('.')[0].split('+')
-        
+        print("Style:", style, "Content:", content)
         # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
