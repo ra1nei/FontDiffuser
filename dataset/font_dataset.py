@@ -66,7 +66,7 @@ class FontDataset(Dataset):
 
         if self.lang_mode == "same":
             # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
-            images_related_style = self.style_to_images[style+lang].copy()
+            images_related_style = self.style_to_images[style+'_'+lang].copy()
             images_related_style.remove(target_image_path)
             style_image_path = random.choice(images_related_style)
 
