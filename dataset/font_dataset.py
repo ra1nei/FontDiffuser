@@ -70,6 +70,7 @@ class FontDataset(Dataset):
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
         lang = style_lang_part[last_underscore_index:]
+        print(f"Lang: {lang}")
         script = self.get_script(style + lang)
 
         # Load content image
