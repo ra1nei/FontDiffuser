@@ -80,13 +80,12 @@ class FontDataset(Dataset):
             content = filename
         else:
             style_lang_part = filename[:last_plus_index]
-            print(filename[last_plus_index:]) # +r
             content = filename[last_plus_index + 1:]
 
-            # ⚡ FIX: nếu tên gốc có dấu '+' ở cuối (chữ hoa Latin), giữ nguyên
             if filename.endswith("+"):
-                # ví dụ Arial_english+A+.jpg → filename = "...+A+"
                 content = filename[last_plus_index-1:last_plus_index] + "+"
+
+        print(f"Style: {style} | Lang: {lang} | Content: {content}")
 
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
@@ -103,7 +102,7 @@ class FontDataset(Dataset):
         nonorm_target_image = self.nonorm_transforms(target_image)
 
         # Chọn style image (giữ nguyên logic cũ)
-        style_image_path = random.choice(self.style_to_images[style + lang + ("+" if content[-1] == "+" else "")])
+        style_image_path = random.choice(self.style_to_images[style + lang])
         print(style_image_path)
         style_image = Image.open(style_image_path).convert("RGB")
 
