@@ -75,19 +75,27 @@ class FontDataset(Dataset):
         last_plus_index = filename.rfind('+')
 
         if last_plus_index == -1:
-            # fallback: không có '+', lấy luôn filename làm content
+            # không có dấu +, fallback
             style_lang_part = filename
             content = filename
         else:
             style_lang_part = filename[:last_plus_index]
             content = filename[last_plus_index + 1:]
-            if filename.endswith("++"):
+
+            # English special case: nếu file kết thúc bằng "+"
+            if content == "" and filename.endswith("+"):
+                # ví dụ: "..._english+A+" → content gốc là "A"
+                content = filename[last_plus_index - 1:last_plus_index]
+            elif filename.endswith("++"):
+                # fallback: giữ nguyên content có dấu +
                 content = content + "+"
-                
+
+        # tách font và language
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
-        lang = style_lang_part[last_underscore_index:]
-        script = self.get_script(style + lang)
+        lang = style_lang_part[last_underscore_index + 1:]  # fix: bỏ dấu "_"
+
+        script = self.get_script(style + "_" + lang)
 
         # Load content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
