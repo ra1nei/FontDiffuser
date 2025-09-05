@@ -141,15 +141,8 @@ def main():
     train_root = os.path.join(args.data_root, "train", "TargetImage")
     all_style_folders = [f for f in os.listdir(train_root) if os.path.isdir(os.path.join(train_root, f))]
 
-    # chia theo ngôn ngữ
-    def get_lang(folder_name: str):
-        suffix = folder_name.lower().rsplit("_", 1)[-1]  # lấy cụm sau cùng sau dấu "_"
-        if suffix in ("chinese", "english"):
-            return suffix
-        return None
-
-    chinese_folders = [f for f in all_style_folders if get_lang(f) == "chinese"]
-    english_folders = [f for f in all_style_folders if get_lang(f) == "english"]
+    chinese_folders = [f for f in all_style_folders if f.lower().endswith("_chinese")]
+    english_folders = [f for f in all_style_folders if f.lower().endswith("_english")]
 
     print(f"Chinese: {len(chinese_folders)}, English: {len(english_folders)}")
     print(f"Total fonts (raw): {len(chinese_folders) + len(english_folders)}")
@@ -159,12 +152,10 @@ def main():
         selected_style_folders = chinese_folders
     elif args.lang_mode == "cross":
         selected_style_folders = chinese_folders + english_folders
-    else:
-        raise ValueError(f"Unsupported lang_mode: {args.lang_mode}")
 
     # thống kê
-    n_chinese = sum("chinese" in f.lower() for f in selected_style_folders)
-    n_english = sum("english" in f.lower() for f in selected_style_folders)
+    n_chinese = sum(f.lower().endswith("_chinese") for f in selected_style_folders)
+    n_english = sum(f.lower().endswith("_english") for f in selected_style_folders)
 
     print(f"Using {len(selected_style_folders)} folders ({n_chinese} zh, {n_english} en)")
     # -------------------------
@@ -175,8 +166,8 @@ def main():
         transforms=[content_transforms, style_transforms, target_transforms],
         scr=args.phase_2
     )
-    print(f"Total target images: {len(train_font_dataset)}")
 
+    print(f"Total target images: {len(train_font_dataset)}")
     train_dataloader = torch.utils.data.DataLoader(
         train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN()
     )
