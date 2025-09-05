@@ -41,7 +41,6 @@ class FontDataset(Dataset):
 
         chinese_folders = [f for f in all_style_folders if f.lower().endswith("_chinese")]
         english_folders = [f for f in all_style_folders if f.lower().endswith("_english")]
-        print(chinese_folders[:10], english_folders[:10])
         if self.lang_mode == "same":
             selected_style_folders = chinese_folders
         elif self.lang_mode == "cross":
@@ -95,12 +94,8 @@ class FontDataset(Dataset):
 
         script = self.get_script(style + lang)
 
-        # DEBUG
-        print(f"Style: {style} | Lang: {lang} | Content: {content}")
-
         # Load content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
-        print(content, content_image_path)
         content_image = Image.open(content_image_path).convert('RGB')
 
         # Ground-truth target image
@@ -109,7 +104,6 @@ class FontDataset(Dataset):
 
         # Chọn style image (giữ nguyên logic cũ)
         style_image_path = random.choice(self.style_to_images[style + lang])
-        print(style_image_path)
         style_image = Image.open(style_image_path).convert("RGB")
 
         if self.transforms is not None:
