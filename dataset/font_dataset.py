@@ -81,7 +81,9 @@ class FontDataset(Dataset):
         else:
             style_lang_part = filename[:last_plus_index]
             content = filename[last_plus_index + 1:]
-
+            if filename.endswith("++"):
+                content = content + "+"
+                
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
         lang = style_lang_part[last_underscore_index:]
