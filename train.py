@@ -286,57 +286,53 @@ def main():
 
                 # TODO
                 if args.phase_2:
-                    # Lấy negative samples
-                    neg_images = samples["neg_images"]
+                    (sample_style_embeddings,
+                    intra_pos_embeddings,
+                    cross_pos_embeddings,
+                    intra_neg_embeddings,
+                    cross_neg_embeddings) = scr(
+                        sample_imgs=pred_original_sample_norm,
+                        intra_pos_imgs=samples.get("intra_pos_image"),
+                        cross_pos_imgs=samples.get("cross_pos_image"),
+                        intra_neg_imgs=samples.get("intra_neg_images"),
+                        cross_neg_imgs=samples.get("cross_neg_images"),
+                        nce_layers=args.nce_layers
+                    )
 
-                    # --- SCR Mode ---
                     if args.scr_mode == "intra":
-                        sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
-                            pred_original_sample_norm,  # sample
-                            target_images,              # intra-positive
-                            neg_images,                 # intra-negative
-                            nce_layers=args.nce_layers
+                        intra_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            intra_pos_s=intra_pos_embeddings,
+                            intra_neg_s=intra_neg_embeddings
                         )
-                        intra_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
                         sc_loss = intra_loss
 
                     elif args.scr_mode == "cross":
-                        sample_style_embeddings, cross_pos_embeddings, cross_neg_embeddings = scr(
-                            pred_original_sample_norm,  # sample
-                            samples["cross_pos_images"],  # cross-positive
-                            samples["cross_neg_images"],  # cross-negative
-                            nce_layers=args.nce_layers
+                        cross_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            cross_pos_s=cross_pos_embeddings,
+                            cross_neg_s=cross_neg_embeddings
                         )
-                        cross_loss = scr.calculate_nce_loss(sample_style_embeddings, cross_pos_embeddings, cross_neg_embeddings)
                         sc_loss = cross_loss
 
                     elif args.scr_mode == "both":
-                        # Intra
-                        sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
-                            pred_original_sample_norm,
-                            target_images,
-                            neg_images,
-                            nce_layers=args.nce_layers
+                        intra_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            intra_pos_s=intra_pos_embeddings,
+                            intra_neg_s=intra_neg_embeddings
                         )
-                        intra_loss = scr.calculate_nce_loss(sample_style_embeddings, pos_style_embeddings, neg_style_embeddings)
-
-                        # Cross
-                        sample_style_embeddings, cross_pos_embeddings, cross_neg_embeddings = scr(
-                            pred_original_sample_norm,
-                            samples["cross_pos_images"],
-                            samples["cross_neg_images"],
-                            nce_layers=args.nce_layers
+                        cross_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            cross_pos_s=cross_pos_embeddings,
+                            cross_neg_s=cross_neg_embeddings
                         )
-                        cross_loss = scr.calculate_nce_loss(sample_style_embeddings, cross_pos_embeddings, cross_neg_embeddings)
-
                         sc_loss = args.alpha_intra * intra_loss + args.beta_cross * cross_loss
 
                     else:
-                        raise ValueError(f"❌ Unsupported scr_mode: {args.scr_mode}")
+                        raise ValueError(f"Unsupported scr_mode: {args.scr_mode}")
 
                     # Thêm SCR vào tổng loss
                     loss += args.sc_coefficient * sc_loss
-
 
                 avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
                 train_loss += avg_loss.item() / args.gradient_accumulation_steps
