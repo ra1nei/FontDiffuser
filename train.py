@@ -178,9 +178,11 @@ def main():
 
     train_font_dataset = FontDataset(
         args=args,
-        phase='train', 
+        phase='train',
         transforms=[content_transforms, style_transforms, target_transforms],
-        scr=args.phase_2
+        scr=args.phase_2,
+        scr_mode=args.scr_mode,
+        lang_mode=args.lang_mode
     )
 
     print(f"Total target images: {len(train_font_dataset)}")
