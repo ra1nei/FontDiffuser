@@ -41,7 +41,7 @@ class FontDataset(Dataset):
 
         chinese_folders = [f for f in all_style_folders if f.lower().endswith("_chinese")]
         english_folders = [f for f in all_style_folders if f.lower().endswith("_english")]
-
+        print(chinese_folders[:10], english_folders[:10])
         if self.lang_mode == "same":
             selected_style_folders = chinese_folders
         elif self.lang_mode == "cross":
