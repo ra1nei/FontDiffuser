@@ -110,32 +110,41 @@ class FontDataset(Dataset):
                         cross_pos_image = self.transforms[2](cross_pos_image)
                     sample["cross_pos_image"] = cross_pos_image
 
+            ### TODO
             # === Intra Negatives ===
             if self.scr_mode in ["intra", "both"]:
-                intra_neg_images = []
+                neg_candidates_all = []
                 for neg_style in self.style_to_images:
                     if neg_style != style + lang and neg_style.endswith(lang):
-                        neg_candidates = [p for p in self.style_to_images[neg_style] if p.endswith("+" + content + ".jpg")]
-                        if len(neg_candidates) > 0:
-                            neg_path = random.choice(neg_candidates)
-                            neg_image = Image.open(neg_path).convert("RGB")
-                            if self.transforms is not None:
-                                neg_image = self.transforms[2](neg_image)
-                            intra_neg_images.append(neg_image[None, :, :, :])
-                if len(intra_neg_images) > 0:
+                        neg_candidates = [p for p in self.style_to_images[neg_style]
+                                          if p.endswith("+" + content + ".jpg")]
+                        neg_candidates_all.extend(neg_candidates)
+
+                if len(neg_candidates_all) > 0:
+                    chosen = random.choices(neg_candidates_all, k=self.num_neg)
+                    intra_neg_images = []
+                    for neg_path in chosen:
+                        neg_image = Image.open(neg_path).convert("RGB")
+                        if self.transforms is not None:
+                            neg_image = self.transforms[2](neg_image)
+                        intra_neg_images.append(neg_image[None, :, :, :])
                     sample["intra_neg_images"] = torch.cat(intra_neg_images, dim=0)
 
             # === Cross Negatives ===
             if self.scr_mode in ["cross", "both"]:
-                cross_neg_images = []
+                neg_candidates_all = []
                 for neg_style in self.style_to_images:
                     if not neg_style.endswith(lang):  # khác script
-                        neg_path = random.choice(self.style_to_images[neg_style])
+                        neg_candidates_all.extend(self.style_to_images[neg_style])
+
+                if len(neg_candidates_all) > 0:
+                    chosen = random.choices(neg_candidates_all, k=self.num_neg)
+                    cross_neg_images = []
+                    for neg_path in chosen:
                         neg_image = Image.open(neg_path).convert("RGB")
                         if self.transforms is not None:
                             neg_image = self.transforms[2](neg_image)
                         cross_neg_images.append(neg_image[None, :, :, :])
-                if len(cross_neg_images) > 0:
                     sample["cross_neg_images"] = torch.cat(cross_neg_images, dim=0)
 
         return sample
