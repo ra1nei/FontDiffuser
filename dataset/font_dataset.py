@@ -72,46 +72,37 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         filename = os.path.splitext(os.path.basename(target_image_path))[0]
-
-        # --- Parse filename: {font}_{language}+{content}.jpg ---
         last_plus_index = filename.rfind('+')
 
         if last_plus_index == -1:
-            # không có dấu '+', fallback
+            # fallback: không có '+'
             style_lang_part = filename
             content = filename
         else:
             style_lang_part = filename[:last_plus_index]
-            content = filename[last_plus_index + 1:]
+            content = filename[last_plus_index + :]
 
-            # Special case: English chữ hoa "A+" → content rỗng
-            if content == "" and filename.endswith("+"):
-                content = filename[last_plus_index - 1:last_plus_index]  # ký tự ngay trước '+'
-
-            # Special case: file kết thúc bằng "++"
-            elif filename.endswith("++"):
+            # ⚡ FIX: nếu tên gốc có dấu '+' ở cuối (chữ hoa Latin), giữ nguyên
+            if filename.endswith("++"):  
+                # ví dụ Arial_english+A+.jpg → filename = "...+A+"
                 content = content + "+"
 
-        # --- Tách font và language ---
+
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
-        lang = style_lang_part[last_underscore_index + 1:]
+        lang = style_lang_part[last_underscore_index:]
+        script = self.get_script(style + lang)
 
-        # --- Lấy script ---
-        script = self.get_script(f"{style}_{lang}")
+        # Load content image
+        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_image = Image.open(content_image_path).convert('RGB')
 
-        # --- Load content image ---
-        content_image_path = os.path.join(self.root, self.phase, "ContentImage", f"{content}.jpg")
-        content_image = Image.open(content_image_path).convert("RGB")
-
-        # --- Ground-truth target image ---
+        # Ground-truth target image
         target_image = Image.open(target_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
 
-        # --- Chọn style image ---
-        style_key = f"{style}{lang}" if (style + lang) in self.style_to_images else f"{style}_{lang}"
-        style_image_path = random.choice(self.style_to_images[style_key])
-
+        # Chọn style image (giữ nguyên logic cũ)
+        style_image_path = random.choice(self.style_to_images[style + lang])
         style_image = Image.open(style_image_path).convert("RGB")
 
         if self.transforms is not None:
