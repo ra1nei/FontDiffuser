@@ -56,11 +56,16 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         filename = os.path.splitext(os.path.basename(target_image_path))[0]
-
-        # Parse style, lang, content
         last_plus_index = filename.rfind('+')
-        style_lang_part = filename[:last_plus_index]
-        content = filename[last_plus_index + 1:]
+
+        if last_plus_index == -1:
+            # fallback: không có '+', lấy luôn filename làm content
+            style_lang_part = filename
+            content = filename
+        else:
+            style_lang_part = filename[:last_plus_index]
+            content = filename[last_plus_index + 1:]
+
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
         lang = style_lang_part[last_underscore_index:]
