@@ -6,25 +6,26 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+
 def get_nonorm_transform(resolution):
-    nonorm_transform =  transforms.Compose(
-            [transforms.Resize((resolution, resolution), 
-                               interpolation=transforms.InterpolationMode.BILINEAR), 
-             transforms.ToTensor()])
-    return nonorm_transform
+    return transforms.Compose([
+        transforms.Resize((resolution, resolution),
+                          interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.ToTensor()
+    ])
+
 
 class FontDataset(Dataset):
-    """The dataset of font generation  
-    """
-    def __init__(self, args, phase, transforms=None, scr=False, lang_mode="same"):
+    """Dataset cho font generation + SCR (intra/cross/both)."""
+    def __init__(self, args, phase, transforms=None, scr=False, scr_mode="intra"):
         super().__init__()
         self.root = args.data_root
-        self.phase = phase # ví dụ: "train_same", "train_cross"
+        self.phase = phase
         self.scr = scr
-        self.lang_mode = args.lang_mode
+        self.scr_mode = scr_mode  # 'intra', 'cross', 'both'
         if self.scr:
             self.num_neg = args.num_neg
-        
+
         # Get Data path
         self.get_path()
         self.transforms = transforms
@@ -35,11 +36,7 @@ class FontDataset(Dataset):
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
 
-        # Lọc danh sách styles
         styles_to_process = os.listdir(target_image_dir)
-        if self.lang_mode == "same":
-            styles_to_process = [s for s in styles_to_process if s.endswith("_chinese")]
-
         for style in styles_to_process:
             images_related_style = []
             for img in os.listdir(f"{target_image_dir}/{style}"):
@@ -54,148 +51,92 @@ class FontDataset(Dataset):
         elif name.endswith("_english"):
             return "latin"
         else:
-            print("Error")
             return None
 
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
-        target_image_name = target_image_path.split('/')[-1]
+        filename = os.path.splitext(os.path.basename(target_image_path))[0]
 
-        # DEBUG
-        filename = os.path.splitext(target_image_name)[0]
+        # Parse style, lang, content
+        last_plus_index = filename.rfind('+')
+        style_lang_part = filename[:last_plus_index]
+        content = filename[last_plus_index + 1:]
+        last_underscore_index = style_lang_part.rfind('_')
+        style = style_lang_part[:last_underscore_index]
+        lang = style_lang_part[last_underscore_index:]
+        script = self.get_script(style + lang)
 
-        try:
-            # Tìm vị trí của dấu '+' cuối cùng để tách content
-            last_plus_index = filename.rfind('+')
-            
-            # Nếu không tìm thấy dấu '+', coi toàn bộ là content
-            if last_plus_index == -1:
-                return "", "", filename
-
-            # Tách phần style_lang và content
-            style_lang_part = filename[:last_plus_index]
-            content = filename[last_plus_index + 1:]
-
-            # Tìm vị trí của dấu '_' cuối cùng để tách style và lang
-            last_underscore_index = style_lang_part.rfind('_')
-            
-            # Nếu không tìm thấy dấu '_', coi toàn bộ phần trước dấu '+' là style
-            if last_underscore_index == -1:
-                style = style_lang_part
-                lang = ""
-            else:
-                style = style_lang_part[:last_underscore_index]
-                lang = style_lang_part[last_underscore_index:]
-
-        except Exception as e:
-            # Xử lý trường hợp tên file không đúng định dạng
-            style, lang, content = "", "", ""
-            print(f"Cảnh báo: Tên file '{target_image_name}' không đúng định dạng. Lỗi: {e}")
-
-        # Read content image
+        # Load content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
 
-        if self.lang_mode == "same":
-            # Same: chọn style khác nhưng cùng content, cùng script (vd: Chinese)
-            images_related_style = self.style_to_images[style+lang].copy()
-            images_related_style.remove(target_image_path)
-            style_image_path = random.choice(images_related_style)
-
-        elif self.lang_mode == "cross":
-            # Cross: chọn style khác nhưng cùng script với content
-            if content.isascii():  
-                valid_styles = [s for s in self.style_to_images if s.isascii()]
-            else:
-                valid_styles = [s for s in self.style_to_images if not s.isascii()]
-
-            # Remove current style
-            valid_styles = [s for s in valid_styles if s != style]
-
-            choose_style = random.choice(valid_styles)
-            style_image_path = random.choice(self.style_to_images[choose_style])
-
-        # Read style_image
-        style_image = Image.open(style_image_path).convert("RGB")
-
-        # Read target image
+        # Ground-truth target image
         target_image = Image.open(target_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
+
+        # Chọn style image (giữ nguyên logic cũ)
+        style_image_path = random.choice(self.style_to_images[style + lang])
+        style_image = Image.open(style_image_path).convert("RGB")
 
         if self.transforms is not None:
             content_image = self.transforms[0](content_image)
             style_image = self.transforms[1](style_image)
             target_image = self.transforms[2](target_image)
-        
+
         sample = {
             "content_image": content_image,
             "style_image": style_image,
             "target_image": target_image,
             "target_image_path": target_image_path,
-            "nonorm_target_image": nonorm_target_image}
-        
+            "nonorm_target_image": nonorm_target_image
+        }
+
         if self.scr:
-            style_list = list(self.style_to_images.keys())
-            if style in style_list:
-                style_list.remove(style)
-
-            choose_neg_names = []
-            chosen_contents = [content] # Theo dõi các content đã thử
-
-            while len(choose_neg_names) < self.num_neg:
-                # Lấy danh sách các style khác
-                current_style_list = style_list.copy()
-                if not current_style_list:
-                    break # Không còn style nào để thử
-
-                # Cố gắng lấy negative images cho content hiện tại
-                temp_neg_names = []
-                num_to_get = self.num_neg - len(choose_neg_names)
-                
-                # Chọn ngẫu nhiên num_to_get style
-                try:
-                    # Sử dụng random.sample để tránh lỗi 'x not in list'
-                    # và chọn số lượng ngẫu nhiên tối đa có thể
-                    chosen_styles = random.sample(current_style_list, min(num_to_get, len(current_style_list)))
-                except ValueError:
-                    # Trường hợp đặc biệt nếu danh sách rỗng
-                    break
-
-                for choose_style in chosen_styles:
-                    neg_path1 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
-                    neg_path2 = f"{self.root}/{self.phase}/TargetImage/{choose_style}/{choose_style}+{content}+.jpg"
-                    
-                    if os.path.exists(neg_path1):
-                        temp_neg_names.append(neg_path1)
-                    elif os.path.exists(neg_path2):
-                        temp_neg_names.append(neg_path2)
-
-                choose_neg_names.extend(temp_neg_names)
-
-                if len(choose_neg_names) < self.num_neg:
-                    # Nếu không đủ, tìm một content khác để thử
-                    all_contents = [os.path.splitext(f)[0].split('+')[-1] for f in self.target_images]
-                    available_contents = [c for c in all_contents if c not in chosen_contents]
-                    if not available_contents:
-                        # Không còn content nào để thử
-                        break
-                    
-                    # Chọn content ngẫu nhiên mới
-                    content = random.choice(available_contents)
-                    chosen_contents.append(content)
-
-            # Xử lý các neg images đã thu thập được
-            neg_images = []
-            for neg_name in choose_neg_names:
-                neg_image = Image.open(neg_name).convert("RGB")
+            # === Intra Positive ===
+            if self.scr_mode in ["intra", "both"]:
+                intra_pos_path = target_image_path  # chính ground-truth
+                intra_pos_image = Image.open(intra_pos_path).convert("RGB")
                 if self.transforms is not None:
-                    neg_image = self.transforms[2](neg_image)
-                neg_images.append(neg_image[None, :, :, :])
+                    intra_pos_image = self.transforms[2](intra_pos_image)
+                sample["intra_pos_image"] = intra_pos_image
 
-            if len(neg_images) > 0:
-                sample["neg_images"] = torch.cat(neg_images, dim=0)
-            else:
-                raise FileNotFoundError(f"❌ Không tìm thấy negative image nào cho content {content} sau khi thử nhiều lần.")
+            # === Cross Positive ===
+            if self.scr_mode in ["cross", "both"]:
+                cross_style = style + ("_english" if script == "chinese" else "_chinese")
+                if cross_style in self.style_to_images:
+                    cross_pos_path = random.choice(self.style_to_images[cross_style])
+                    cross_pos_image = Image.open(cross_pos_path).convert("RGB")
+                    if self.transforms is not None:
+                        cross_pos_image = self.transforms[2](cross_pos_image)
+                    sample["cross_pos_image"] = cross_pos_image
+
+            # === Intra Negatives ===
+            if self.scr_mode in ["intra", "both"]:
+                intra_neg_images = []
+                for neg_style in self.style_to_images:
+                    if neg_style != style + lang and neg_style.endswith(lang):
+                        neg_candidates = [p for p in self.style_to_images[neg_style] if p.endswith("+" + content + ".jpg")]
+                        if len(neg_candidates) > 0:
+                            neg_path = random.choice(neg_candidates)
+                            neg_image = Image.open(neg_path).convert("RGB")
+                            if self.transforms is not None:
+                                neg_image = self.transforms[2](neg_image)
+                            intra_neg_images.append(neg_image[None, :, :, :])
+                if len(intra_neg_images) > 0:
+                    sample["intra_neg_images"] = torch.cat(intra_neg_images, dim=0)
+
+            # === Cross Negatives ===
+            if self.scr_mode in ["cross", "both"]:
+                cross_neg_images = []
+                for neg_style in self.style_to_images:
+                    if not neg_style.endswith(lang):  # khác script
+                        neg_path = random.choice(self.style_to_images[neg_style])
+                        neg_image = Image.open(neg_path).convert("RGB")
+                        if self.transforms is not None:
+                            neg_image = self.transforms[2](neg_image)
+                        cross_neg_images.append(neg_image[None, :, :, :])
+                if len(cross_neg_images) > 0:
+                    sample["cross_neg_images"] = torch.cat(cross_neg_images, dim=0)
 
         return sample
 
