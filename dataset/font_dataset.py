@@ -17,12 +17,13 @@ def get_nonorm_transform(resolution):
 
 class FontDataset(Dataset):
     """Dataset cho font generation + SCR (intra/cross/both)."""
-    def __init__(self, args, phase, transforms=None, scr=False, scr_mode="intra"):
+    def __init__(self, args, phase, transforms=None, scr=False, scr_mode="intra", lang_mode="same"):
         super().__init__()
         self.root = args.data_root
         self.phase = phase
         self.scr = scr
         self.scr_mode = scr_mode  # 'intra', 'cross', 'both'
+        self.lang_mode = lang_mode
         if self.scr:
             self.num_neg = args.num_neg
 
@@ -36,14 +37,28 @@ class FontDataset(Dataset):
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
 
-        styles_to_process = os.listdir(target_image_dir)
-        for style in styles_to_process:
+        all_style_folders = [f for f in os.listdir(target_image_dir) if os.path.isdir(os.path.join(target_image_dir, f))]
+
+        chinese_folders = [f for f in all_style_folders if f.lower().endswith("_chinese")]
+        english_folders = [f for f in all_style_folders if f.lower().endswith("_english")]
+
+        if self.lang_mode == "same":
+            selected_style_folders = chinese_folders
+        elif self.lang_mode == "cross":
+            selected_style_folders = chinese_folders + english_folders
+
+        print(f"[FontDataset] Using {len(selected_style_folders)} folders "
+              f"({sum(f.lower().endswith('_chinese') for f in selected_style_folders)} zh, "
+              f"{sum(f.lower().endswith('_english') for f in selected_style_folders)} en)")
+
+        for style in selected_style_folders:
             images_related_style = []
             for img in os.listdir(f"{target_image_dir}/{style}"):
                 img_path = f"{target_image_dir}/{style}/{img}"
                 self.target_images.append(img_path)
                 images_related_style.append(img_path)
             self.style_to_images[style] = images_related_style
+
 
     def get_script(self, name: str):
         if name.endswith("_chinese"):
