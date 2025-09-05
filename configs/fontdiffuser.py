@@ -1,3 +1,5 @@
+import argparse
+
 def get_parser():
     parser = argparse.ArgumentParser(description="Training config for FontDiffuser.")
     ################# Experience #################
