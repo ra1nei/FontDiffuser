@@ -56,6 +56,7 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         filename = os.path.splitext(os.path.basename(target_image_path))[0]
+        print(filename)
         last_plus_index = filename.rfind('+')
 
         if last_plus_index == -1:
