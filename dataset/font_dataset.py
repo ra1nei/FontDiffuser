@@ -72,22 +72,23 @@ class FontDataset(Dataset):
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
         filename = os.path.splitext(os.path.basename(target_image_path))[0]
-        last_plus_index = filename.rfind('+')
 
-        if last_plus_index == -1:
-            # fallback: không có '+'
-            style_lang_part = filename
-            content = filename
+        # Tách theo dấu '+'
+        parts = filename.split('+')
+
+        if len(parts) >= 3:
+            style = "+".join(parts[:-2]) + "+"   # ghép lại các phần trước lang
+            lang = parts[-2]                     # phần ngay trước content
+            content = parts[-1]                  # phần sau lang
+            if filename.endswith("+"):           # giữ dấu '+' cuối nếu có
+                content += "+"
         else:
-            style_lang_part = filename[:last_plus_index]
-            content = filename[last_plus_index + 1:]
+            # fallback: không đúng format chuẩn
+            style = filename
+            lang = ""
+            content = filename
 
-            if filename.endswith("+"):
-                content = filename[last_plus_index-1:last_plus_index] + "+"
-
-        last_underscore_index = style_lang_part.rfind('_')
-        style = style_lang_part[:last_underscore_index]
-        lang = style_lang_part[last_underscore_index:]
+        # script
         script = self.get_script(style + lang)
 
         # DEBUG
