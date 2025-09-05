@@ -73,22 +73,26 @@ class FontDataset(Dataset):
         target_image_path = self.target_images[index]
         filename = os.path.splitext(os.path.basename(target_image_path))[0]
 
-        # Tách theo dấu '+'
-        parts = filename.split('+')
-
-        if len(parts) >= 3:
-            style = "+".join(parts[:-2]) + "+"   # ghép lại các phần trước lang
-            lang = parts[-2]                     # phần ngay trước content
-            content = parts[-1]                  # phần sau lang
-            if filename.endswith("+"):           # giữ dấu '+' cuối nếu có
-                content += "+"
+        if "_english" in filename:
+            idx = filename.rfind("_english")
+            style = filename[:idx]
+            lang = "_english"
+            content = filename[idx + len("_english") + 1:]  # bỏ dấu "+"
+        elif "_chinese" in filename:
+            idx = filename.rfind("_chinese")
+            style = filename[:idx]
+            lang = "_chinese"
+            content = filename[idx + len("_chinese") + 1:]
         else:
-            # fallback: không đúng format chuẩn
+            # fallback: không tìm thấy lang
             style = filename
             lang = ""
-            content = filename
+            content = ""
 
-        # script
+        # giữ dấu '+' cuối nếu có
+        if filename.endswith("+") and not content.endswith("+"):
+            content += "+"
+
         script = self.get_script(style + lang)
 
         # DEBUG
