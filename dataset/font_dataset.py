@@ -46,6 +46,7 @@ class FontDataset(Dataset):
             selected_style_folders = chinese_folders
         elif self.lang_mode == "cross":
             selected_style_folders = chinese_folders + english_folders
+        print(len(selected_style_folders))
 
         print(f"[FontDataset] Using {len(selected_style_folders)} folders "
               f"({sum(f.lower().endswith('_chinese') for f in selected_style_folders)} zh, "
