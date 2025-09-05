@@ -85,12 +85,13 @@ class FontDataset(Dataset):
             if filename.endswith("+"):
                 content = filename[last_plus_index-1:last_plus_index] + "+"
 
-        print(f"Style: {style} | Lang: {lang} | Content: {content}")
-
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
         lang = style_lang_part[last_underscore_index:]
         script = self.get_script(style + lang)
+
+        # DEBUG
+        print(f"Style: {style} | Lang: {lang} | Content: {content}")
 
         # Load content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
