@@ -83,7 +83,7 @@ class FontDataset(Dataset):
             content = filename[last_plus_index + 1:]
 
             # ⚡ FIX: nếu tên gốc có dấu '+' ở cuối (chữ hoa Latin), giữ nguyên
-            if filename.endswith("++"):  
+            if filename.endswith("+"):  
                 # ví dụ Arial_english+A+.jpg → filename = "...+A+"
                 content = content + "+"
 
@@ -93,6 +93,7 @@ class FontDataset(Dataset):
         lang = style_lang_part[last_underscore_index:]
         script = self.get_script(style + lang)
 
+        print(content)
         # Load content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
         content_image = Image.open(content_image_path).convert('RGB')
