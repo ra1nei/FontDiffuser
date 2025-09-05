@@ -86,7 +86,7 @@ class FontDataset(Dataset):
             # ⚡ FIX: nếu tên gốc có dấu '+' ở cuối (chữ hoa Latin), giữ nguyên
             if filename.endswith("+"):
                 # ví dụ Arial_english+A+.jpg → filename = "...+A+"
-                content = content + "+"
+                content = filename[last_plus_index-1:last_plus_index]
 
         last_underscore_index = style_lang_part.rfind('_')
         style = style_lang_part[:last_underscore_index]
