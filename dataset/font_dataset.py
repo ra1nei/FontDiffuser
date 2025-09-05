@@ -104,6 +104,7 @@ class FontDataset(Dataset):
 
         # Chọn style image (giữ nguyên logic cũ)
         style_image_path = random.choice(self.style_to_images[style + lang])
+        print(style_image_path)
         style_image = Image.open(style_image_path).convert("RGB")
 
         if self.transforms is not None:
