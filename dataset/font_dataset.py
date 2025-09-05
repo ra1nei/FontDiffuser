@@ -80,7 +80,7 @@ class FontDataset(Dataset):
             content = filename
         else:
             style_lang_part = filename[:last_plus_index]
-            content = filename[last_plus_index + :]
+            content = filename[last_plus_index + 1:]
 
             # ⚡ FIX: nếu tên gốc có dấu '+' ở cuối (chữ hoa Latin), giữ nguyên
             if filename.endswith("++"):  
