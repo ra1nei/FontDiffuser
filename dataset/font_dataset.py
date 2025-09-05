@@ -103,7 +103,7 @@ class FontDataset(Dataset):
         nonorm_target_image = self.nonorm_transforms(target_image)
 
         # Chọn style image (giữ nguyên logic cũ)
-        style_image_path = random.choice(self.style_to_images[style + lang])
+        style_image_path = random.choice(self.style_to_images[style + lang + ("+" if content[-1] == "+" else "")])
         print(style_image_path)
         style_image = Image.open(style_image_path).convert("RGB")
 
