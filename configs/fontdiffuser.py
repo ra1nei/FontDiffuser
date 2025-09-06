@@ -23,7 +23,6 @@ def get_parser():
     # Training
     parser.add_argument("--unet_type", type=str, default="unet", choices=["unet", "sd3"])
     parser.add_argument("--lang_mode", type=str, default="cross", choices=["cross", "same"])
-    parser.add_argument("--same_ratio", type=float, default=0.5)
 
     parser.add_argument("--phase_2", action="store_true", help="Training in phase 2 using SCR module.")
     parser.add_argument("--phase_1_ckpt_dir", type=str, default=None)
