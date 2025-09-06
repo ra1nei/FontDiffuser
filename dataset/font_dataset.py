@@ -47,9 +47,21 @@ class FontDataset(Dataset):
             selected_style_folders = chinese_folders + english_folders
         print(len(selected_style_folders))
 
+        # Đếm tổng số ảnh
+        total_images = 0
+        for folder in selected_style_folders:
+            folder_path = os.path.join(target_image_dir, folder)
+            total_images += sum(
+                1 for f in os.listdir(folder_path)
+                if os.path.isfile(os.path.join(folder_path, f))
+            )
+
+        print(f"Tổng số ảnh: {total_images}")
+
         print(f"[FontDataset] Using {len(selected_style_folders)} folders "
               f"({sum(f.lower().endswith('_chinese') for f in selected_style_folders)} zh, "
               f"{sum(f.lower().endswith('_english') for f in selected_style_folders)} en)")
+        
 
         for style in selected_style_folders:
             images_related_style = []
