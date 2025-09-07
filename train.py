@@ -198,8 +198,18 @@ def main():
 
                 if args.unet_type == "unet":
                     noise = torch.randn_like(target_images)
+                    # Add noise to the target_images according to the noise magnitude at each timestep
+                    # (this is the forward diffusion process)
                     noisy_target_images = noise_scheduler.add_noise(target_images, noise, timesteps)
 
+                    # Classifier-free training strategy
+                    context_mask = torch.bernoulli(torch.zeros(bsz) + args.drop_prob)
+                    for i, mask_value in enumerate(context_mask):
+                        if mask_value==1:
+                            content_images[i, :, :, :] = 1
+                            style_images[i, :, :, :] = 1
+                    
+                    # Predict the noise residual and compute loss
                     noise_pred, offset_out_sum = model(
                         x_t=noisy_target_images, 
                         timesteps=timesteps, 
