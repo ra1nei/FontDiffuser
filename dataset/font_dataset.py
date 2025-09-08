@@ -107,7 +107,7 @@ class FontDataset(Dataset):
         script = self.get_script(style + lang)
 
         # Load content image
-        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
         content_image = Image.open(content_image_path).convert('RGB')
 
         # Ground-truth target image
@@ -157,7 +157,7 @@ class FontDataset(Dataset):
                 for neg_style in self.style_to_images:
                     if neg_style != style + lang and neg_style.endswith(lang):
                         neg_candidates = [p for p in self.style_to_images[neg_style]
-                                          if p.endswith("+" + content + ".jpg")]
+                                          if p.endswith("+" + content + ".png")]
                         neg_candidates_all.extend(neg_candidates)
 
                 if len(neg_candidates_all) > 0:
