@@ -7,13 +7,16 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 
+# Load biến môi trường từ ~/.bashrc (WANDB_API_KEY sẽ có ở đây)
+source ~/.bashrc
+
 # Vào project
 cd ~/data/fontdiffuser/FontDiffuser || exit
 
-# Thêm WandB API key của bạn tại đây
-export WANDB_API_KEY=18253a0c54cd9a624a5dd541a6f7bb41dcc36c00
+# Đảm bảo wandb login với đúng key của bạn
+wandb login --relogin $WANDB_API_KEY
 
-# Load conda đúng path
+# Load conda env
 source /data/cndt_hangdv/miniconda3/bin/activate fontdiffuser || { echo "Failed to activate conda env"; exit 1; }
 
 # Xóa log cũ
