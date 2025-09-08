@@ -20,4 +20,4 @@ rm -f ../../outputs/FontDiffuser/fontdiffuser_training.log
 cd ~/data/fontdiffuser/FontDiffuser
 git pull origin main
 
-bash scripts/Phase_1_UNet_SAME.sh
+bash "scripts/P1 UNET_SAME.sh"
