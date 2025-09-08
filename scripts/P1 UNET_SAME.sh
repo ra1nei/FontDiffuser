@@ -1,6 +1,6 @@
 accelerate launch --num_processes=1 train.py \
     --seed=123 \
-    --data_root="/kaggle/working/my_data/thesis-data-png" \
+    --data_root="./thesis-data-png" \
     --report_to="wandb" \
     --resolution=96 \
     --style_image_size=96 \
