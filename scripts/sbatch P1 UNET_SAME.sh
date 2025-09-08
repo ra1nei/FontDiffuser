@@ -7,16 +7,17 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 
-cd "$(dirname "$0")"
+# Vào project
+cd ~/data/fontdiffuser/FontDiffuser || exit
 
-module load slurm
-module load python39
+# Load conda đúng path
+source /data/cndt_hangdv/miniconda3/bin/activate fontdiffuser || { echo "Failed to activate conda env"; exit 1; }
 
-source ~/miniconda3/bin/activate dang_env
+# Xóa log cũ
+rm -f outputs/FontDiffuser/fontdiffuser_training.log
 
-rm -f ../../outputs/FontDiffuser/fontdiffuser_training.log
-
-cd ~/data/fontdiffuser/FontDiffuser
+# Cập nhật code
 git pull origin main
 
+# Chạy training
 bash "scripts/P1 UNET_SAME.sh"
