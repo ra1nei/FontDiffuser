@@ -9,3 +9,4 @@ opencv-python
 info-nce-pytorch
 kornia
 torchvision
+wandb
