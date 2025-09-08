@@ -12,8 +12,7 @@ cd "$(dirname "$0")"
 module load slurm
 module load python39
 
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate fontdiffuser
+source ~/miniconda3/bin/activate dang_env
 
 rm -f ../../outputs/FontDiffuser/fontdiffuser_training.log
 
