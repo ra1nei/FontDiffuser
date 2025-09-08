@@ -13,7 +13,7 @@ module load slurm
 module load python39
 
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate dang_env
+conda activate fontdiffuser
 
 rm -f ../../outputs/FontDiffuser/fontdiffuser_training.log
 
