@@ -10,3 +10,4 @@ info-nce-pytorch
 kornia
 torchvision
 wandb
+gdown
