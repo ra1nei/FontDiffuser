@@ -2,7 +2,6 @@ import os
 import math
 import time
 import logging
-import random
 from tqdm.auto import tqdm
 
 import torch
@@ -13,14 +12,12 @@ from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from diffusers.optimization import get_scheduler
-from diffusers.models import AutoencoderKL
 
 from dataset.font_dataset import FontDataset
 from dataset.collate_fn import CollateFN
 from configs.fontdiffuser import get_parser
 from src import (FontDiffuserModel,
                  ContentPerceptualLoss,
-                 SD3AdapterUNet,
                  build_unet,
                  build_style_encoder,
                  build_content_encoder,
@@ -32,7 +29,6 @@ from utils import (save_args_to_yaml,
                    normalize_mean_std)
 
 logger = get_logger(__name__)
-
 
 def get_args():
     parser = get_parser()
@@ -46,7 +42,6 @@ def get_args():
     args.content_image_size = (content_image_size, content_image_size)
 
     return args
-
 
 def main():
 
@@ -77,30 +72,6 @@ def main():
     style_encoder = build_style_encoder(args=args)
     content_encoder = build_content_encoder(args=args)
     noise_scheduler = build_ddpm_scheduler(args)
-
-    vae = None
-    if args.unet_type == "unet":
-        unet = build_unet(args=args)
-
-    elif args.unet_type == "sd3":
-        
-
-        from diffusers import StableDiffusion3Pipeline
-
-        pipe = StableDiffusion3Pipeline.from_pretrained(
-            "stabilityai/stable-diffusion-3-medium-diffusers",
-            torch_dtype="float16"
-        )
-        pipe.to("cuda")
-
-        vae = AutoencoderKL.from_pretrained(
-            "stabilityai/stable-diffusion-3-medium",
-            subfolder="vae"
-        ).to(accelerator.device)
-        vae.requires_grad_(False)
-
-    else:
-        raise ValueError(f"Unknown unet_type {args.unet_type}")
 
     if args.phase_2:
         unet.load_state_dict(torch.load(f"{args.phase_1_ckpt_dir}/unet.pth"))
@@ -151,7 +122,8 @@ def main():
     
     # Optimizer
     if args.scale_lr:
-        args.learning_rate *= args.gradient_accumulation_steps * args.train_batch_size * accelerator.num_processes
+        args.learning_rate = (
+            args.learning_rate * args.gradient_accumulation_steps * args.train_batch_size * accelerator.num_processes)
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=args.learning_rate,
@@ -196,62 +168,36 @@ def main():
                 bsz = target_images.shape[0]
                 timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bsz,), device=target_images.device).long()
 
-                if args.unet_type == "unet":
-                    noise = torch.randn_like(target_images)
-                    # Add noise to the target_images according to the noise magnitude at each timestep
-                    # (this is the forward diffusion process)
-                    noisy_target_images = noise_scheduler.add_noise(target_images, noise, timesteps)
+                noise = torch.randn_like(target_images)
+                # Add noise to the target_images according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_target_images = noise_scheduler.add_noise(target_images, noise, timesteps)
 
-                    # Classifier-free training strategy
-                    context_mask = torch.bernoulli(torch.zeros(bsz) + args.drop_prob)
-                    for i, mask_value in enumerate(context_mask):
-                        if mask_value==1:
-                            content_images[i, :, :, :] = 1
-                            style_images[i, :, :, :] = 1
-                    
-                    # Predict the noise residual and compute loss
-                    noise_pred, offset_out_sum = model(
-                        x_t=noisy_target_images, 
-                        timesteps=timesteps, 
-                        style_images=style_images,
-                        content_images=content_images,
-                        content_encoder_downsample_size=args.content_encoder_downsample_size)
-
-                elif args.unet_type == "sd3":
-                    # latent pipeline
-                    latents = vae.encode(target_images).latent_dist.sample() * 0.18215
-                    noise = torch.randn_like(latents)
-                    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-
-                    content_feats = content_encoder(content_images)
-                    style_embed = style_encoder(style_images)
-
-                    noise_pred = unet(
-                        sample=noisy_latents,
-                        timestep=timesteps,
-                        encoder_hidden_states=content_feats,
-                    )[0]
-                    offset_out_sum = torch.tensor(0.0, device=latents.device)
+                # Classifier-free training strategy
+                context_mask = torch.bernoulli(torch.zeros(bsz) + args.drop_prob)
+                for i, mask_value in enumerate(context_mask):
+                    if mask_value==1:
+                        content_images[i, :, :, :] = 1
+                        style_images[i, :, :, :] = 1
+                
+                # Predict the noise residual and compute loss
+                noise_pred, offset_out_sum = model(
+                    x_t=noisy_target_images, 
+                    timesteps=timesteps, 
+                    style_images=style_images,
+                    content_images=content_images,
+                    content_encoder_downsample_size=args.content_encoder_downsample_size)
 
                 # --- Loss ---
                 diff_loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
                 offset_loss = offset_out_sum / 2
 
-                if args.unet_type == "unet":
-                    pred_original_sample_norm = x0_from_epsilon(
-                        scheduler=noise_scheduler,
-                        noise_pred=noise_pred,
-                        x_t=noisy_target_images,
-                        timesteps=timesteps)
-                    pred_original_sample = reNormalize_img(pred_original_sample_norm)
-
-                elif args.unet_type == "sd3":
-                    pred_original_sample_norm = x0_from_epsilon(
-                        scheduler=noise_scheduler,
-                        noise_pred=noise_pred,
-                        x_t=noisy_latents,
-                        timesteps=timesteps)
-                    pred_original_sample = vae.decode(pred_original_sample_norm / 0.18215).sample
+                pred_original_sample_norm = x0_from_epsilon(
+                    scheduler=noise_scheduler,
+                    noise_pred=noise_pred,
+                    x_t=noisy_target_images,
+                    timesteps=timesteps)
+                pred_original_sample = reNormalize_img(pred_original_sample_norm)
 
                 norm_pred_ori = normalize_mean_std(pred_original_sample)
                 norm_target_ori = normalize_mean_std(nonorm_target_images)

@@ -293,26 +293,17 @@ class GBlock2(nn.Module):
 def style_encoder_textedit_addskip_arch(ch =64,out_channel_multiplier = 1, input_nc = 3):
     arch = {}
     n=2
-    arch[64] = {
-        'in_channels':   [input_nc] + [ch * item for item in [1,2,4,8]],
-        'out_channels':  [ch * item for item in [1,2,4,8,16]],
-        'resolution':    [32,16,8,4,2],
-    }
-    arch[96] = {
-        'in_channels':   [input_nc] + [ch*item for item in  [1,2,4,8]],
-        'out_channels':  [item * ch for item in [1,2,4,8,16]],
-        'resolution':    [48,24,12,6,3]
-    }
-    arch[128] = {
-        'in_channels':   [input_nc] + [ch*item for item in  [1,2,4,8]],
-        'out_channels':  [item * ch for item in [1,2,4,8,16]],
-        'resolution':    [64,32,16,8,4]
-    }
-    arch[256] = {
-        'in_channels':   [input_nc]+[ch*item for item in [1,2,4,8,8]],
-        'out_channels':  [item*ch for item in [1,2,4,8,8,16]],
-        'resolution':    [128,64,32,16,8,4]
-    }
+    arch[96] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2,4,8]],
+                                'out_channels' : [item * ch for item in [1,2,4,8,16]],
+                                'resolution': [48,24,12,6,3]}
+
+    arch[128] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2,4,8]],
+                                'out_channels' : [item * ch for item in [1,2,4,8,16]],
+                                'resolution': [64,32,16,8,4]}
+    
+    arch[256] = {'in_channels':[input_nc]+[ch*item for item in [1,2,4,8,8]],
+                                'out_channels':[item*ch for item in [1,2,4,8,8,16]],
+                                'resolution': [128,64,32,16,8,4]}
     return arch
 
 
@@ -360,14 +351,12 @@ class StyleEncoder(ModelMixin, ConfigMixin):
         self.SN_eps = SN_eps
         self.fp16 = G_fp16
 
-        if self.resolution == 64:
-            self.save_features = [0,1,2,3,4]
-        elif self.resolution == 96:
-            self.save_features = [0,1,2,3,4]
-        elif self.resolution == 128:
-            self.save_features = [0,1,2,3,4]
+        if self.resolution == 96:
+            self.save_featrues = [0,1,2,3,4]
+        if self.resolution == 128:
+            self.save_featrues = [0,1,2,3,4]
         elif self.resolution == 256:
-            self.save_features = [0,1,2,3,4,5]
+            self.save_featrues = [0,1,2,3,4,5]
         
         self.out_channel_nultipiler = 1
         self.arch = style_encoder_textedit_addskip_arch(
@@ -443,7 +432,7 @@ class StyleEncoder(ModelMixin, ConfigMixin):
         for index, blocklist in enumerate(self.blocks):
             for block in blocklist:
                 h = block(h)            
-            if index in self.save_features[:-1]:
+            if index in self.save_featrues[:-1]:
                 residual_features.append(h)        
         h = self.blocks[-1](h)
         style_emd = h        
