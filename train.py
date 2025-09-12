@@ -120,6 +120,19 @@ def main():
         lang_mode=args.lang_mode
     )
 
+    # DEBUG
+    if accelerator.is_main_process:  # chỉ chạy 1 lần trên tiến trình chính
+        import zipfile
+        import io
+        from pathlib import Path
+        
+        save_zip_path = Path(args.output_dir) / "train_dataset_snapshot.zip"
+        with zipfile.ZipFile(save_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for img_path in train_font_dataset.target_images:
+                zipf.write(img_path, arcname=os.path.relpath(img_path, start=args.data_root))
+        logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Dataset snapshot saved to {save_zip_path}")
+        print(f"✅ Dataset snapshot saved: {save_zip_path}")
+
     train_dataloader = torch.utils.data.DataLoader(
         train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN()
     )
