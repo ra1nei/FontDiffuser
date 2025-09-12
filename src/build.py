@@ -4,8 +4,6 @@ from src import (ContentEncoder,
                  UNet,
                  SCR)
 
-# from modules.dit import DiTModel
-
 def build_unet(args):
     unet = UNet(
         sample_size=args.resolution,
@@ -36,19 +34,6 @@ def build_unet(args):
         reduction=32)
     
     return unet
-
-# ### TODO
-# def build_dit_model(args):
-#     dit_model = DiTModel(
-#         image_size=args.resolution, # or appropriate image size
-#         patch_size=args.patch_size, # define patch_size in args
-#         in_channels=args.in_channels, # define in_channels in args
-#         hidden_size=args.hidden_size,
-#         depth=args.depth,
-#         num_heads=args.num_heads
-#     )
-#     print("Get Diffusion Transformer (DiT) Model!")
-#     return dit_model
 
 def build_style_encoder(args):
     style_image_encoder = StyleEncoder(

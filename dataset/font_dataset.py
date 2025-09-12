@@ -34,6 +34,7 @@ class FontDataset(Dataset):
 
     def get_path(self):
         self.target_images = []
+        # Images with related style
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
 
@@ -47,7 +48,7 @@ class FontDataset(Dataset):
             selected_style_folders = chinese_folders + english_folders
         print(len(selected_style_folders))
 
-        # Đếm tổng số ảnh
+        # DEBUG - Đếm tổng số ảnh
         total_images = 0
         for folder in selected_style_folders:
             folder_path = os.path.join(target_image_dir, folder)
@@ -62,7 +63,6 @@ class FontDataset(Dataset):
               f"({sum(f.lower().endswith('_chinese') for f in selected_style_folders)} zh, "
               f"{sum(f.lower().endswith('_english') for f in selected_style_folders)} en)")
         
-
         for style in selected_style_folders:
             images_related_style = []
             for img in os.listdir(f"{target_image_dir}/{style}"):
@@ -106,15 +106,15 @@ class FontDataset(Dataset):
 
         script = self.get_script(style + lang)
 
-        # Load content image
+        # Read content image
         content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
         content_image = Image.open(content_image_path).convert('RGB')
 
-        # Ground-truth target image
+        # Read target image
         target_image = Image.open(target_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
 
-        # Chọn style image (giữ nguyên logic cũ)
+        # Random sample used for style image
         style_image_path = random.choice(self.style_to_images[style + lang])
         style_image = Image.open(style_image_path).convert("RGB")
 

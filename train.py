@@ -121,9 +121,8 @@ def main():
     )
 
     # DEBUG
-    if accelerator.is_main_process:  # chỉ chạy 1 lần trên tiến trình chính
+    if accelerator.is_main_process:
         import zipfile
-        import io
         from pathlib import Path
         
         save_zip_path = Path(args.output_dir) / "train_dataset_snapshot.zip"
