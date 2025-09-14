@@ -1,4 +1,5 @@
 import argparse
+import os
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Training config for FontDiffuser.")
@@ -84,7 +85,15 @@ def get_parser():
     parser.add_argument("--correcting_x0_fn", type=str, default=None)
     parser.add_argument("--t_start", type=str, default=None)
     parser.add_argument("--t_end", type=str, default=None)
-    
+
     parser.add_argument("--local_rank", type=int, default=-1)
-    
+
+    # Checkpoint resume options
+    parser.add_argument("--resume_ckpt", type=str, default=None,
+                        help="Đường dẫn checkpoint để resume training.")
+    parser.add_argument("--auto_resume", action="store_true",
+                        help="Tự tìm checkpoint mới nhất trong output_dir và resume.")
+    parser.add_argument("--resume_strict", action="store_true",
+                        help="Strict mode khi load checkpoint (mặc định bỏ qua mismatch layer).")
+
     return parser

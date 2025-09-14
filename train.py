@@ -43,6 +43,34 @@ def get_args():
 
     return args
 
+def save_checkpoint(save_dir, model, optimizer, lr_scheduler, global_step):
+    os.makedirs(save_dir, exist_ok=True)
+    # save model parts
+    torch.save(model.unet.state_dict(), f"{save_dir}/unet.pth")
+    torch.save(model.style_encoder.state_dict(), f"{save_dir}/style_encoder.pth")
+    torch.save(model.content_encoder.state_dict(), f"{save_dir}/content_encoder.pth")
+    # save optimizer & scheduler
+    torch.save({
+        "optimizer": optimizer.state_dict(),
+        "lr_scheduler": lr_scheduler.state_dict(),
+        "global_step": global_step,
+    }, f"{save_dir}/training_state.pth")
+    logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Saved checkpoint to {save_dir}")
+
+def load_checkpoint(load_dir, model, optimizer=None, lr_scheduler=None):
+    # Load model parts
+    model.unet.load_state_dict(torch.load(f"{load_dir}/unet.pth"))
+    model.style_encoder.load_state_dict(torch.load(f"{load_dir}/style_encoder.pth"))
+    model.content_encoder.load_state_dict(torch.load(f"{load_dir}/content_encoder.pth"))
+    global_step = 0
+    if optimizer is not None and lr_scheduler is not None:
+        state = torch.load(f"{load_dir}/training_state.pth", map_location="cpu")
+        optimizer.load_state_dict(state["optimizer"])
+        lr_scheduler.load_state_dict(state["lr_scheduler"])
+        global_step = state.get("global_step", 0)
+        logging.info(f"Resumed training from step {global_step}")
+    return global_step
+
 def main():
     args = get_args()
 
@@ -177,6 +205,9 @@ def main():
     num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
 
     global_step = 0
+    if args.resume_ckpt:
+        global_step = load_checkpoint(args.resume_ckpt, model, optimizer, lr_scheduler)
+
     for epoch in range(num_train_epochs):
         train_loss = 0.0
         for step, samples in enumerate(train_dataloader):
@@ -310,6 +341,8 @@ def main():
                     torch.save(model.content_encoder.state_dict(), f"{save_dir}/content_encoder.pth")
                     torch.save(model, f"{save_dir}/total_model.pth")
                     logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Save checkpoint step {global_step}")
+                    save_checkpoint(f"{args.output_dir}/global_step_{global_step}",
+                                    model, optimizer, lr_scheduler, global_step)
                     print("Save checkpoint on step {}".format(global_step))
 
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
