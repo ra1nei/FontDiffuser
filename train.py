@@ -196,10 +196,6 @@ def main():
         accelerator.init_trackers(args.experience_name)
         save_args_to_yaml(args=args, output_file=f"{args.output_dir}/{args.experience_name}_config.yaml")
 
-    # Only show the progress bar once on each machine
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, initial=global_step)
-    progress_bar.set_description("Steps")
-
     # Convert to the training epoch
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
     num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
@@ -207,6 +203,10 @@ def main():
     global_step = 0
     if args.resume_ckpt:
         global_step = load_checkpoint(args.resume_ckpt, model, optimizer, lr_scheduler)
+
+    # Only show the progress bar once on each machine
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, initial=global_step)
+    progress_bar.set_description("Steps")
 
     for epoch in range(num_train_epochs):
         train_loss = 0.0
