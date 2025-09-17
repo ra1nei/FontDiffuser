@@ -197,7 +197,7 @@ def main():
         save_args_to_yaml(args=args, output_file=f"{args.output_dir}/{args.experience_name}_config.yaml")
 
     # Only show the progress bar once on each machine
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, initial=global_step)
     progress_bar.set_description("Steps")
 
     # Convert to the training epoch
