@@ -10,7 +10,7 @@ from torchvision import transforms
 
 from dataset.font_dataset import FontDataset
 from dataset.collate_fn import CollateFN
-from src import build_scr  # dùng hàm build_scr để tạo SCR chuẩn
+from src.build import build_scr
 
 def parse_args():
     parser = argparse.ArgumentParser()
