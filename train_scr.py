@@ -1,6 +1,7 @@
 # train_scr.py
 import os
 import argparse
+import math
 from tqdm.auto import tqdm
 
 import torch
@@ -8,9 +9,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from accelerate import Accelerator
+from accelerate.utils import set_seed
+
 from dataset.font_dataset import FontDataset
 from dataset.collate_fn import CollateFN
 from src.build import build_scr
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -22,7 +27,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
 
-    # SCR-specific arguments
+    # SCR-specific
     parser.add_argument("--temperature", type=float, default=0.07)
     parser.add_argument("--mode", type=str, default="training", choices=["training", "inference"])
     parser.add_argument("--loss_mode", type=str, default="intra", choices=["intra", "cross", "both"])
@@ -31,7 +36,17 @@ def parse_args():
     parser.add_argument("--beta_cross", type=float, default=0.7)
     parser.add_argument("--num_neg", type=int, default=4)
 
+    # Logging & checkpoint
     parser.add_argument("--save_dir", type=str, default="./scr_checkpoints")
+    parser.add_argument("--resume_ckpt", type=str, default=None)
+    parser.add_argument("--ckpt_interval", type=int, default=20000)
+    parser.add_argument("--max_train_steps", type=int, default=200000)
+    parser.add_argument("--log_interval", type=int, default=50)
+
+    parser.add_argument("--report_to", type=str, default="wandb", help="Logging backend (wandb/tensorboard/none)")
+    parser.add_argument("--experience_name", type=str, default="SCR-Training")
+    parser.add_argument("--seed", type=int, default=123)
+
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
@@ -55,14 +70,37 @@ def get_transforms(resolution):
         ])
     )
 
+
+def save_checkpoint(path, model, optimizer, step):
+    torch.save({
+        "step": step,
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+    }, path)
+    print(f"[INFO] Saved checkpoint: {path}")
+
+
+def load_checkpoint(path, model, optimizer, device):
+    ckpt = torch.load(path, map_location=device)
+    model.load_state_dict(ckpt["model_state"])
+    optimizer.load_state_dict(ckpt["optimizer_state"])
+    step = ckpt.get("step", 0)
+    print(f"[INFO] Resumed training from {path} (global_step={step})")
+    return step
+
+
 def train():
     args = parse_args()
-    os.makedirs(args.save_dir, exist_ok=True)
+    if args.seed is not None:
+        set_seed(args.seed)
 
-    # transforms
+    accelerator = Accelerator(log_with=args.report_to, project_dir=args.save_dir)
+    if accelerator.is_main_process:
+        os.makedirs(args.save_dir, exist_ok=True)
+        accelerator.init_trackers(args.experience_name, config=vars(args))
+
+    # transforms & dataloader
     content_tf, style_tf, target_tf = get_transforms(args.resolution)
-
-    # dataset & dataloader
     dataset = FontDataset(
         args=args,
         phase=args.phase,
@@ -71,7 +109,7 @@ def train():
         scr_mode=args.loss_mode,
         lang_mode="same"
     )
-    loader = DataLoader(
+    dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
         shuffle=True,
@@ -80,63 +118,75 @@ def train():
         drop_last=True
     )
 
-    # model SCR
-    scr_model = build_scr(args)  # dùng đúng build_scr trong src
-    device = torch.device(args.device)
-    scr_model = scr_model.to(device)
-    scr_model.train()
-
+    # model + optimizer
+    scr_model = build_scr(args)
     optimizer = optim.Adam(
         list(scr_model.StyleFeatExtractor.parameters()) + list(scr_model.StyleFeatProjector.parameters()),
         lr=args.learning_rate
     )
 
+    scr_model, optimizer, dataloader = accelerator.prepare(scr_model, optimizer, dataloader)
+
     global_step = 0
-    for epoch in range(args.epochs):
-        pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{args.epochs}")
-        for batch in pbar:
-            style = batch["style_image"].to(device)
-            intra_pos = batch.get("intra_pos_image", None)
-            cross_pos = batch.get("cross_pos_image", None)
-            intra_neg = batch.get("intra_neg_images", None)
-            cross_neg = batch.get("cross_neg_images", None)
+    if args.resume_ckpt and os.path.isfile(args.resume_ckpt):
+        global_step = load_checkpoint(args.resume_ckpt, scr_model, optimizer, accelerator.device)
 
-            if intra_pos is not None: intra_pos = intra_pos.to(device)
-            if cross_pos is not None: cross_pos = cross_pos.to(device)
-            if intra_neg is not None: intra_neg = intra_neg.to(device)
-            if cross_neg is not None: cross_neg = cross_neg.to(device)
+    total_steps = min(args.max_train_steps, args.epochs * len(dataloader))
+    pbar = tqdm(total=total_steps, disable=not accelerator.is_local_main_process, initial=global_step)
+    pbar.set_description("Training Steps")
 
-            optimizer.zero_grad()
-            sample_s, intra_pos_s, cross_pos_s, intra_neg_s, cross_neg_s = scr_model(
-                sample_imgs=style,
-                intra_pos_imgs=intra_pos,
-                cross_pos_imgs=cross_pos,
-                intra_neg_imgs=intra_neg,
-                cross_neg_imgs=cross_neg,
-                nce_layers=args.nce_layers
-            )
-            loss = scr_model.calculate_nce_loss(
-                sample_s,
-                intra_pos_s=intra_pos_s,
-                cross_pos_s=cross_pos_s,
-                intra_neg_s=intra_neg_s,
-                cross_neg_s=cross_neg_s
-            )
-            loss.backward()
-            optimizer.step()
+    scr_model.train()
+    while global_step < total_steps:
+        for batch in dataloader:
+            style = batch["style_image"].to(accelerator.device)
+            intra_pos = batch.get("intra_pos_image")
+            cross_pos = batch.get("cross_pos_image")
+            intra_neg = batch.get("intra_neg_images")
+            cross_neg = batch.get("cross_neg_images")
+
+            if intra_pos is not None: intra_pos = intra_pos.to(accelerator.device)
+            if cross_pos is not None: cross_pos = cross_pos.to(accelerator.device)
+            if intra_neg is not None: intra_neg = intra_neg.to(accelerator.device)
+            if cross_neg is not None: cross_neg = cross_neg.to(accelerator.device)
+
+            with accelerator.accumulate(scr_model):
+                optimizer.zero_grad()
+                sample_s, intra_pos_s, cross_pos_s, intra_neg_s, cross_neg_s = scr_model(
+                    sample_imgs=style,
+                    intra_pos_imgs=intra_pos,
+                    cross_pos_imgs=cross_pos,
+                    intra_neg_imgs=intra_neg,
+                    cross_neg_imgs=cross_neg,
+                    nce_layers=args.nce_layers
+                )
+                loss = scr_model.calculate_nce_loss(
+                    sample_s,
+                    intra_pos_s=intra_pos_s,
+                    cross_pos_s=cross_pos_s,
+                    intra_neg_s=intra_neg_s,
+                    cross_neg_s=cross_neg_s
+                )
+                accelerator.backward(loss)
+                optimizer.step()
 
             global_step += 1
-            pbar.set_postfix({"loss": f"{loss.item():.6f}"})
+            if accelerator.is_main_process:
+                pbar.update(1)
+                pbar.set_postfix({"loss": f"{loss.item():.6f}"})
 
-        # save checkpoint cuối mỗi epoch
-        ckpt_path = os.path.join(args.save_dir, f"scr_epoch{epoch+1}.pth")
-        torch.save({
-            "epoch": epoch+1,
-            "step": global_step,
-            "model_state": scr_model.state_dict(),
-            "optimizer_state": optimizer.state_dict()
-        }, ckpt_path)
-        print(f"[INFO] Saved checkpoint: {ckpt_path}")
+            if global_step % args.log_interval == 0:
+                accelerator.log({"train_loss": loss.item()}, step=global_step)
+
+            if global_step % args.ckpt_interval == 0 and accelerator.is_main_process:
+                save_checkpoint(os.path.join(args.save_dir, f"step_{global_step}.pth"),
+                                accelerator.unwrap_model(scr_model),
+                                optimizer, global_step)
+
+            if global_step >= total_steps:
+                break
+
+    accelerator.end_training()
+
 
 if __name__ == "__main__":
     train()
