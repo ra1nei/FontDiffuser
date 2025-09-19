@@ -88,8 +88,6 @@ def load_checkpoint(path, model, optimizer, device):
     print(f"[INFO] Resumed training from {path} (global_step={step})")
     return step
 
-
-def train():
 def train():
     args = parse_args()
     if args.seed is not None:
