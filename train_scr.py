@@ -90,6 +90,7 @@ def load_checkpoint(path, model, optimizer, device):
 
 
 def train():
+def train():
     args = parse_args()
     if args.seed is not None:
         set_seed(args.seed)
@@ -132,10 +133,12 @@ def train():
         global_step = load_checkpoint(args.resume_ckpt, scr_model, optimizer, accelerator.device)
 
     total_steps = min(args.max_train_steps, args.epochs * len(dataloader))
-    pbar = tqdm(total=total_steps, disable=not accelerator.is_local_main_process, initial=global_step)
-    pbar.set_description("Training Steps")
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, initial=global_step)
+    progress_bar.set_description("Training Steps")
 
     scr_model.train()
+    train_loss = 0.0
+
     while global_step < total_steps:
         for batch in dataloader:
             style = batch["style_image"].to(accelerator.device)
@@ -166,27 +169,31 @@ def train():
                     intra_neg_s=intra_neg_s,
                     cross_neg_s=cross_neg_s
                 )
+
+                # Tính loss trung bình across processes (nếu distributed)
+                avg_loss = accelerator.gather(loss.repeat(args.batch_size)).mean()
+                train_loss += avg_loss.item() / accelerator.gradient_accumulation_steps
+
                 accelerator.backward(loss)
                 optimizer.step()
 
-            global_step += 1
-            if accelerator.is_main_process:
-                pbar.update(1)
-                pbar.set_postfix({"loss": f"{loss.item():.6f}"})
+            # Nếu đã step optimizer thật sự
+            if accelerator.sync_gradients:
+                global_step += 1
+                accelerator.log({"train_loss": train_loss}, step=global_step)
+                train_loss = 0.0  # reset sau khi log
+                progress_bar.update(1)
+                progress_bar.set_postfix({"step_loss": loss.item()})
 
-            if global_step % args.log_interval == 0:
-                accelerator.log({"train_loss": loss.item()}, step=global_step)
-
-            if global_step % args.ckpt_interval == 0 and accelerator.is_main_process:
-                save_checkpoint(os.path.join(args.save_dir, f"step_{global_step}.pth"),
-                                accelerator.unwrap_model(scr_model),
-                                optimizer, global_step)
+                if global_step % args.ckpt_interval == 0 and accelerator.is_main_process:
+                    save_checkpoint(os.path.join(args.save_dir, f"step_{global_step}.pth"),
+                                    accelerator.unwrap_model(scr_model),
+                                    optimizer, global_step)
 
             if global_step >= total_steps:
                 break
 
     accelerator.end_training()
-
 
 if __name__ == "__main__":
     train()
