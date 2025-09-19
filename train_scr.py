@@ -21,14 +21,19 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
+
+    # SCR-specific arguments
+    parser.add_argument("--temperature", type=float, default=0.07)
     parser.add_argument("--loss_mode", type=str, default="intra", choices=["intra", "cross", "both"])
     parser.add_argument("--nce_layers", type=str, default="0,1,2,3,4,5")
     parser.add_argument("--alpha_intra", type=float, default=0.3)
     parser.add_argument("--beta_cross", type=float, default=0.7)
+    parser.add_argument("--num_neg", type=int, default=4)
+
     parser.add_argument("--save_dir", type=str, default="./scr_checkpoints")
-    parser.add_argument("--num_neg", type=int, default=16)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
+
 
 def get_transforms(resolution):
     return (
