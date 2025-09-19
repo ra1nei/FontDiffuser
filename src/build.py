@@ -55,7 +55,7 @@ def build_scr(args):
     scr = SCR(
         temperature=args.temperature,
         mode=args.mode,
-        image_size=args.scr_image_size)
+        image_size=args.resolution)
     print("Loaded SCR module for supervision successfully!")
     return scr
 
