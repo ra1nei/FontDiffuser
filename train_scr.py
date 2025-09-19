@@ -24,6 +24,7 @@ def parse_args():
 
     # SCR-specific arguments
     parser.add_argument("--temperature", type=float, default=0.07)
+    parser.add_argument("--mode", type=str, default="training", choices=["training", "inference"])
     parser.add_argument("--loss_mode", type=str, default="intra", choices=["intra", "cross", "both"])
     parser.add_argument("--nce_layers", type=str, default="0,1,2,3,4,5")
     parser.add_argument("--alpha_intra", type=float, default=0.3)
