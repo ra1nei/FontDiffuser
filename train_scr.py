@@ -16,7 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_root", type=str, required=True)
     parser.add_argument("--phase", type=str, default="train")
-    parser.add_argument("--resolution", type=int, default=96)
+    parser.add_argument("--scr_image_size", type=int, default=96)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=10)
@@ -60,7 +60,7 @@ def train():
     os.makedirs(args.save_dir, exist_ok=True)
 
     # transforms
-    content_tf, style_tf, target_tf = get_transforms(args.resolution)
+    content_tf, style_tf, target_tf = get_transforms(args.scr_image_size)
 
     # dataset & dataloader
     dataset = FontDataset(
