@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--alpha_intra", type=float, default=0.3)
     parser.add_argument("--beta_cross", type=float, default=0.7)
     parser.add_argument("--save_dir", type=str, default="./scr_checkpoints")
+    parser.add_argument("--num_neg", type=int, default=16)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
