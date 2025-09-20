@@ -184,7 +184,7 @@ def train():
                 progress_bar.set_postfix({"step_loss": loss.item()})
 
                 if global_step % args.ckpt_interval == 0 and accelerator.is_main_process:
-                    save_checkpoint(os.path.join(args.save_dir, f"step_{global_step}.pth"),
+                    save_checkpoint(os.path.join(args.save_dir, f"scr_{global_step}.pth"),
                                     accelerator.unwrap_model(scr_model),
                                     optimizer, global_step)
 
