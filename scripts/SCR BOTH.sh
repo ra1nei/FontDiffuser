@@ -1,7 +1,7 @@
 accelerate launch --num_processes=1 train_scr.py \
     --data_root="./thesis-data-png" \
     --report_to="wandb" \
-    --experience_name="SCR-INTRA" \
+    --experience_name="SCR-BOTH" \
     --max_train_steps=210000 \
     --ckpt_interval=25000 \
     --batch_size=16 \
