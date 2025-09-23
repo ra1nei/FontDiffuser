@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
+    parser.add_argument("--lang_mode", type=str, default="same", choices=["same", "cross"])
 
     # SCR-specific
     parser.add_argument("--temperature", type=float, default=0.07)
@@ -106,7 +107,7 @@ def train():
         transforms=[content_tf, style_tf, target_tf],
         scr=True,
         scr_mode=args.loss_mode,
-        lang_mode="same"
+        lang_mode=args.lang_mode
     )
     dataloader = DataLoader(
         dataset,
