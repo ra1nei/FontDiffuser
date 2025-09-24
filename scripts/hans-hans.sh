@@ -27,7 +27,7 @@ python sample.py \
 python sample.py \
     --ckpt_dir="./global_step_440000/" \
     --content_image_path="./thesis-data-png/train/ContentImage/え.png" \
-    --style_image_path="./thesis-data-png/train/TargetImage/Arphic ‘Who’ E5GBK_M Handwriting Pen Chinese Font-Simplified Chinese Fonts_chinese/Arphic ‘Who’ E5GBK_M Handwriting Pen Chinese Font-Simplified Chinese Fonts_chinese+且.png" \
+    --style_image_path="./thesis-data-png/train/TargetImage/Classic Zong yi ti Font_chinese/Classic Zong yi ti Font_chinese+专.png" \
     --save_image \
     --save_image_dir="./hans-hans/example3" \
     --device="cuda:0" \
