@@ -1,6 +1,6 @@
 python sample.py \
     --ckpt_dir="./global_step_440000/" \
-    --content_image_path="./thesis-data-png/train/ContentImage/A.png" \
+    --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/AaChaoMianJin-2_english/AaChaoMianJin-2_english+L+.png" \
     --save_image \
     --save_image_dir="./eng-eng/example1" \
@@ -13,7 +13,7 @@ python sample.py \
 
 python sample.py \
     --ckpt_dir="./global_step_440000/" \
-    --content_image_path="./thesis-data-png/train/ContentImage/A.png" \
+    --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/║║╥╟▓╩╡√╠σ╝≥_english/║║╥╟▓╩╡√╠σ╝≥_english+M+.png" \
     --save_image \
     --save_image_dir="./eng-eng/example2" \
@@ -26,7 +26,7 @@ python sample.py \
 
 python sample.py \
     --ckpt_dir="./global_step_440000/" \
-    --content_image_path="./thesis-data-png/train/ContentImage/A.png" \
+    --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_english/851CHIKARA-DZUYOKU-kanaB-2_english+b.png" \
     --save_image \
     --save_image_dir="./eng-eng/example3" \
