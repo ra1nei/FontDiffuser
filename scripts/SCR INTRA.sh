@@ -8,4 +8,4 @@ accelerate launch --num_processes=1 train_scr.py \
     --learning_rate=1e-4 \
     --loss_mode=intra \
     --save_dir="./scr_ckpts_intra" \
-    --resume_ckpt="./scr_ckpts/scr_125000.pth"
+    --resume_ckpt="./scr_intra_ckpt/scr_175000.pth"
