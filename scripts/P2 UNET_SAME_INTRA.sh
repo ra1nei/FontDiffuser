@@ -30,5 +30,5 @@ accelerate launch --num_processes=1 train.py \
     --alpha_intra=0.3 \
     --beta_cross=0.7 \
     --experience_name="P2-UNET-SAME-INTRA" \
-    --output_dir="./p2-unet-same-intra" \
+    --output_dir="./p2_unet_same_intra" \
     --phase_1_ckpt_dir="./p1_unet_same"
