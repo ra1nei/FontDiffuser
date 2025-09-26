@@ -11,7 +11,7 @@
 source ~/.bashrc
 
 # Vào project
-cd ~/data/fontdiffuser/FontDiffuser || exit
+cd ~/data/TDKD/FontDiffuser || exit
 
 # Đảm bảo wandb login với đúng key của bạn
 wandb login --relogin $WANDB_API_KEY
