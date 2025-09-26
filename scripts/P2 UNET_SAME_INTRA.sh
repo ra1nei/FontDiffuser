@@ -31,4 +31,4 @@ accelerate launch --num_processes=1 train.py \
     --beta_cross=0.7 \
     --experience_name="P2-UNET-SAME-INTRA" \
     --output_dir="./p2-unet-same-intra" \
-    --phase_1_ckpt_dir="./p1-unet-same"
+    --phase_1_ckpt_dir="../p1-unet-same"
