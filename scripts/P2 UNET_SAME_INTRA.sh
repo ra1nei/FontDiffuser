@@ -3,7 +3,7 @@ accelerate launch --num_processes=1 train.py \
     --data_root="./thesis-data-png" \
     --report_to="wandb" \
     --phase_2 \
-    --scr_ckpt_path="./scr_210000.pth" \
+    --scr_ckpt_path="./scr_intra_ckpt/scr_225000.pth" \
     --sc_coefficient=0.01 \
     --num_neg=16 \
     --resolution=96 \
@@ -30,5 +30,5 @@ accelerate launch --num_processes=1 train.py \
     --alpha_intra=0.3 \
     --beta_cross=0.7 \
     --experience_name="P2-UNET-SAME-INTRA" \
-    --output_dir="outputs/p2-unet-same-intra" \
-    --phase_1_ckpt_dir="outputs/p1-unet-same/global_step_15000/"
+    --output_dir="./p2-unet-same-intra" \
+    --phase_1_ckpt_dir="./p1-unet-same"
