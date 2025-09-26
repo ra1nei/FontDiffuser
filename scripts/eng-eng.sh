@@ -1,5 +1,5 @@
 python sample.py \
-    --ckpt_dir="./global_step_440000/" \
+    --ckpt_dir="./p1_unet_same/" \
     --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/AaChaoMianJin-2_english/AaChaoMianJin-2_english+L+.png" \
     --save_image \
@@ -12,7 +12,7 @@ python sample.py \
     --method="multistep"
 
 python sample.py \
-    --ckpt_dir="./global_step_440000/" \
+    --ckpt_dir="./p1_unet_same/" \
     --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/║║╥╟▓╩╡√╠σ╝≥_english/║║╥╟▓╩╡√╠σ╝≥_english+M+.png" \
     --save_image \
@@ -25,7 +25,7 @@ python sample.py \
     --method="multistep"
 
 python sample.py \
-    --ckpt_dir="./global_step_440000/" \
+    --ckpt_dir="./p1_unet_same/" \
     --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_english/851CHIKARA-DZUYOKU-kanaB-2_english+b.png" \
     --save_image \
