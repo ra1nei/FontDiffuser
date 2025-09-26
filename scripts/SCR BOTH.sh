@@ -10,5 +10,5 @@ accelerate launch --num_processes=1 train_scr.py \
     --loss_mode="both" \
     --lang_mode="cross" \
     --alpha_intra=0.3 \
-    --beta_cross=0.7
-    # --resume_ckpt="./scr_ckpts/step_20000.pth"
+    --beta_cross=0.7 \
+    --resume_ckpt="./scr_both_ckpt/scr_100000.pth"
