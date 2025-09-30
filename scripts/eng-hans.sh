@@ -1,5 +1,5 @@
 python sample.py \
-    --ckpt_dir="./p1_unet_same/" \
+    --ckpt_dir="./p2_unet_same_both/global_step_30000/" \
     --content_image_path="./thesis-data-png/train/ContentImage/A+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/851CHIKARA-DZUYOKU-kanaB-2_chinese/851CHIKARA-DZUYOKU-kanaB-2_chinese+万.png" \
     --save_image \
@@ -12,7 +12,7 @@ python sample.py \
     --method="multistep"
 
 python sample.py \
-    --ckpt_dir="./p1_unet_same/" \
+    --ckpt_dir="./p2_unet_same_both/global_step_30000/" \
     --content_image_path="./thesis-data-png/train/ContentImage/b.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/A-OTF-CinemaLetterStd-Light-2_chinese/A-OTF-CinemaLetterStd-Light-2_chinese+事.png" \
     --save_image \
@@ -25,7 +25,7 @@ python sample.py \
     --method="multistep"
 
 python sample.py \
-    --ckpt_dir="./p1_unet_same/" \
+    --ckpt_dir="./p2_unet_same_both/global_step_30000/" \
     --content_image_path="./thesis-data-png/train/ContentImage/C+.png" \
     --style_image_path="./thesis-data-png/train/TargetImage/Classic Zong yi ti Font_chinese/Classic Zong yi ti Font_chinese+专.png" \
     --save_image \
