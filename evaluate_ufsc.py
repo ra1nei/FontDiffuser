@@ -12,6 +12,7 @@ from skimage.metrics import structural_similarity as ssim
 import torch.nn.functional as F
 import lpips
 import torch_fidelity
+from datetime import datetime
 
 from sample import sampling, load_fontdiffuer_pipeline
 from utils import save_args_to_yaml, save_image_with_content_style
@@ -288,6 +289,9 @@ def main():
     parser.add_argument("--num_samples", type=int, default=100)
     parser.add_argument("--use_batch", action="store_true")
     args = parser.parse_args()
+
+    now = datetime.now().strftime("%H%M%S_%d%m%Y")
+    args.save_dir = args.save_dir or f"results_{now}"
 
     args.style_image_size = (96, 96)
     args.content_image_size = (96, 96)
