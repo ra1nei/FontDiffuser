@@ -290,8 +290,9 @@ def main():
     parser.add_argument("--use_batch", action="store_true")
     args = parser.parse_args()
 
-    now = datetime.now().strftime("%H%M%S_%d%m%Y")
-    args.save_dir = args.save_dir or f"results_{now}"
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    args.save_dir = os.path.join(args.save_dir, f"result_{timestamp}")
+    os.makedirs(args.save_dir, exist_ok=True)
 
     args.style_image_size = (96, 96)
     args.content_image_size = (96, 96)
