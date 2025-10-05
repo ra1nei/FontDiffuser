@@ -138,7 +138,7 @@ def main():
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_samples", type=int, default=100)
-    parser.add_argument("--use_batch", type=bool, default=False)
+    parser.add_argument("--use_batch", action="store_true", help="Reuse existing batch if available")
     args = parser.parse_args()
 
     args.style_image_size = (96, 96)
