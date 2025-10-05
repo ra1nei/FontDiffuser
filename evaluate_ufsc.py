@@ -98,6 +98,13 @@ def batch_sampling(args):
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
+    # DEBUG
+    for s in samples[:10]:
+        print("Content:", s["content"])
+        print(" -> lang:", get_lang_from_path(s["content"], args.english_dir, args.chinese_dir))
+        print("Style :", s["style"])
+
+
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
         content_path, style_path = s["content"], s["style"]
         content_img = preprocess_image(content_path, args.content_image_size).to(args.device)
