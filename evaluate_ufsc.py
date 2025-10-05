@@ -8,9 +8,17 @@ from tqdm import tqdm
 from PIL import Image
 from accelerate.utils import set_seed
 from torchvision import transforms
+from skimage.metrics import structural_similarity as ssim
+import torch.nn.functional as F
+import lpips
 
 from sample import sampling, load_fontdiffuer_pipeline
 from utils import save_args_to_yaml, save_image_with_content_style, save_single_image
+
+
+# ====================== Utility Functions ======================
+
+lpips_model = lpips.LPIPS(net='alex').to("cuda")
 
 
 def preprocess_image(path, size):
@@ -34,13 +42,11 @@ def collect_images(root_dir):
     return paths
 
 
-
 def get_lang_from_path(path, english_dir, chinese_dir):
     p = os.path.abspath(path)
     eng = os.path.abspath(english_dir)
     chi = os.path.abspath(chinese_dir)
 
-    # try commonpath (most robust)
     try:
         if os.path.commonpath([p, eng]) == eng:
             return "english"
@@ -52,7 +58,6 @@ def get_lang_from_path(path, english_dir, chinese_dir):
     except ValueError:
         pass
 
-    # fallback: check path components for exact folder name
     parts = os.path.normpath(p).lower().split(os.sep)
     if "english" in parts:
         return "english"
@@ -61,6 +66,31 @@ def get_lang_from_path(path, english_dir, chinese_dir):
     return None
 
 
+def get_target_path(content_path, style_path, english_dir, chinese_dir):
+    """Tìm ground truth tương ứng: style_font nhưng ở ngôn ngữ của content"""
+    content_lang = get_lang_from_path(content_path, english_dir, chinese_dir)
+    style_font = os.path.basename(os.path.dirname(style_path))
+    char_filename = os.path.basename(content_path)
+    base_dir = chinese_dir if content_lang == "chinese" else english_dir
+    return os.path.join(base_dir, style_font, char_filename)
+
+
+def compute_metrics(gen_pil, target_pil, gen_t, target_t):
+    img1 = np.array(gen_pil)
+    img2 = np.array(target_pil)
+    ssim_val = ssim(img1, img2, channel_axis=-1, data_range=255)
+    lpips_val = lpips_model(gen_t, target_t).item()
+    l1_val = F.l1_loss(gen_t, target_t).item()
+    return {"SSIM": float(ssim_val), "LPIPS": float(lpips_val), "L1": float(l1_val)}
+
+
+def load_image_tensor(path, size=(96, 96)):
+    img = Image.open(path).convert("RGB").resize(size)
+    tensor = transforms.ToTensor()(img).unsqueeze(0).to("cuda")
+    return img, tensor
+
+
+# ====================== Main Sampling + Evaluation ======================
 
 def batch_sampling(args):
     pipe = load_fontdiffuer_pipeline(args)
@@ -77,7 +107,7 @@ def batch_sampling(args):
 
     json_path = os.path.join(args.save_dir, "samples.json")
 
-    if os.path.exists(json_path) and args.use_batch == True:
+    if os.path.exists(json_path) and args.use_batch:
         print(f"Reusing existing batch from {json_path}")
         with open(json_path, "r") as f:
             samples = json.load(f)
@@ -90,20 +120,14 @@ def batch_sampling(args):
             lang = get_lang_from_path(content, args.english_dir, args.chinese_dir)
             if lang == "english":
                 style = random.choice(chinese_contents)
-            elif lang == "chinese":
+            else:
                 style = random.choice(english_contents)
             samples.append({"content": content, "style": style})
-
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
-    # DEBUG
-    for s in samples[:10]:
-        print("Content:", s["content"])
-        print(" -> lang:", get_lang_from_path(s["content"], args.english_dir, args.chinese_dir))
-        print("Style :", s["style"])
-
+    metrics_list = []
 
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
         content_path, style_path = s["content"], s["style"]
@@ -139,7 +163,12 @@ def batch_sampling(args):
         content_font = os.path.basename(os.path.dirname(content_path))
         style_font = os.path.basename(os.path.dirname(style_path))
         out_name = f"{content_font}_to_{style_font}_{i:04d}.jpg"
+        out_path = os.path.join(args.save_dir, out_name)
 
+        # Save single image (clean)
+        save_single_image(args.save_dir, out_pil, out_name)
+
+        # Save with content/style references
         save_image_with_content_style(
             save_dir=args.save_dir,
             image=out_pil,
@@ -149,12 +178,33 @@ def batch_sampling(args):
             resolution=args.content_image_size[0],
         )
 
-        save_single_image(
-            save_dir=args.save_dir, image=out_imgs[0],
-        )
+        # ====== Evaluate ======
+        target_path = get_target_path(content_path, style_path, args.english_dir, args.chinese_dir)
+        if os.path.exists(target_path):
+            target_pil, target_t = load_image_tensor(target_path, args.content_image_size)
+            gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to("cuda")
+            metrics = compute_metrics(out_pil, target_pil, gen_t, target_t)
+            metrics["sample_id"] = i
+            metrics["output"] = out_path
+            metrics["target"] = target_path
+            metrics_list.append(metrics)
+        else:
+            print(f"⚠️ Missing target for sample {i}: {target_path}")
 
-        os.rename(os.path.join(args.save_dir, "out_with_cs.jpg"), os.path.join(args.save_dir, out_name))
+    # ====== Save metrics summary ======
+    metrics_path = os.path.join(args.save_dir, "metrics.json")
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics_list, f, indent=2, ensure_ascii=False)
+    print(f"Saved metrics to {metrics_path}")
 
+    # Mean report
+    if metrics_list:
+        mean_vals = {k: np.mean([m[k] for m in metrics_list if k in m]) for k in ["SSIM", "LPIPS", "L1"]}
+        print("\n📊 Evaluation Summary:")
+        for k, v in mean_vals.items():
+            print(f"{k}: {v:.4f}")
+
+    # Zip all
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
     print(f"Compressing results to {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
