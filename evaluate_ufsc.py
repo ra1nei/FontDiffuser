@@ -6,6 +6,7 @@ from tqdm import tqdm
 from PIL import Image
 import torchvision.transforms as transforms
 from accelerate.utils import set_seed
+from sample import sampling
 
 from src import (
     FontDiffuserDPMPipeline,
@@ -16,7 +17,6 @@ from src import (
     build_style_encoder,
 )
 from utils import save_single_image
-
 
 # -----------------------------
 # Tiền xử lý ảnh
@@ -83,29 +83,52 @@ def get_style_images(english_dir, chinese_dir):
 # -----------------------------
 # Sampling cho toàn bộ dataset
 # -----------------------------
+# -----------------------------
+# Sampling cho toàn bộ dataset
+# -----------------------------
 def batch_sampling(args):
     pipe = load_pipeline(args)
     os.makedirs(args.save_dir, exist_ok=True)
     set_seed(args.seed)
 
-    # load content và style
-    content_images = [
-        os.path.join(args.source_dir, f)
-        for f in os.listdir(args.source_dir)
-        if f.lower().endswith((".png", ".jpg", ".jpeg"))
+    # Load toàn bộ ảnh content (seen)
+    english_contents = [
+        os.path.join(args.english_dir, fnt, fname)
+        for fnt in os.listdir(args.english_dir)
+        for fname in os.listdir(os.path.join(args.english_dir, fnt))
+        if fname.lower().endswith((".png", ".jpg", ".jpeg"))
     ]
-    style_images = get_style_images(args.english_dir, args.chinese_dir)
+    chinese_contents = [
+        os.path.join(args.chinese_dir, fnt, fname)
+        for fnt in os.listdir(args.chinese_dir)
+        for fname in os.listdir(os.path.join(args.chinese_dir, fnt))
+        if fname.lower().endswith((".png", ".jpg", ".jpeg"))
+    ]
+    english_styles = chinese_contents   # style cho english content → lấy từ chinese
+    chinese_styles = english_contents   # style cho chinese content → lấy từ english
 
-    print(f"🖋 Found {len(content_images)} content images")
-    print(f"🎨 Found {len(style_images)} style images")
+    print(f"🖋 English content: {len(english_contents)}")
+    print(f"🖋 Chinese content: {len(chinese_contents)}")
 
-    # Loop qua mỗi style font
-    for i, style_path in enumerate(tqdm(style_images, desc="Sampling")):
-        content_path = random.choice(content_images)
+    all_contents = english_contents + chinese_contents
+    print(f"🎨 Total contents: {len(all_contents)}")
 
+    for i in tqdm(range(args.num_samples), desc="Sampling"):
+        # --- chọn content ngẫu nhiên ---
+        content_path = random.choice(all_contents)
+        is_english = "english" in content_path.lower()
+
+        # --- chọn style từ ngôn ngữ khác ---
+        if is_english:
+            style_path = random.choice(chinese_styles)
+        else:
+            style_path = random.choice(english_styles)
+
+        # --- preprocess ---
         content_img = preprocess_image(content_path, args.content_image_size).to(args.device)
         style_img = preprocess_image(style_path, args.style_image_size).to(args.device)
 
+        # --- sinh ảnh ---
         with torch.no_grad():
             out_imgs = pipe.generate(
                 content_images=content_img,
@@ -123,14 +146,14 @@ def batch_sampling(args):
                 correcting_x0_fn=args.correcting_x0_fn,
             )
 
-        # Lưu ảnh ra
+        # --- lưu ảnh ---
         out_img = out_imgs[0]
-        font_name = os.path.basename(os.path.dirname(style_path))
-        out_name = f"{font_name}_{i:04d}.png"
-        save_path = os.path.join(args.save_dir, out_name)
+        style_font = os.path.basename(os.path.dirname(style_path))
+        content_font = os.path.basename(os.path.dirname(content_path))
+        out_name = f"{content_font}_to_{style_font}_{i:04d}.png"
         save_single_image(args.save_dir, out_img)
-    print(f"\n✅ Done! Generated images saved in: {args.save_dir}")
 
+    print(f"\n✅ Done! Generated images saved in: {args.save_dir}")
 
 # -----------------------------
 # Main
@@ -146,6 +169,7 @@ def main():
     parser.add_argument("--chinese_dir", type=str, required=True)
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--num_samples", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
