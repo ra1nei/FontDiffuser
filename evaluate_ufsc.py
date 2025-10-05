@@ -200,10 +200,12 @@ def batch_sampling(args):
             gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to("cuda")
             metrics = compute_metrics(out_pil, target_pil, gen_t, target_t)
             metrics["sample_id"] = i
+            metrics["content"] = content_font
+            metrics["style"] = style_font
             metrics["output"] = out_path
             metrics["target"] = target_path
             metrics_list.append(metrics)
-            
+
             target_save_path = os.path.join(args.save_dir, f"target_{i:04d}.jpg")
             target_pil.save(target_save_path)
         else:
