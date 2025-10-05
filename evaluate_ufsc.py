@@ -1,133 +1,73 @@
 import os
 import random
 import torch
-import numpy as np
 import json
 import zipfile
-
-import torchvision.transforms as transforms
+import numpy as np
 from tqdm import tqdm
 from PIL import Image
-from sample import sampling
 from accelerate.utils import set_seed
-from utils import save_image_with_content_style
-from src import (
-    FontDiffuserDPMPipeline,
-    FontDiffuserModelDPM,
-    build_ddpm_scheduler,
-    build_unet,
-    build_content_encoder,
-    build_style_encoder,
-)
+from torchvision import transforms
+
+from sample import sampling, load_fontdiffuer_pipeline
+from utils import save_args_to_yaml, save_image_with_content_style
 
 
-
-def preprocess_image(img_path, size):
+def preprocess_image(path, size):
     tfm = transforms.Compose([
         transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5]),
     ])
-    img = Image.open(img_path).convert("RGB")
+    img = Image.open(path).convert("RGB")
     return tfm(img)[None, :]
 
 
-
-def load_pipeline(args):
-    unet = build_unet(args)
-    unet.load_state_dict(torch.load(f"{args.ckpt_dir}/unet.pth", map_location=args.device))
-
-    style_encoder = build_style_encoder(args)
-    style_encoder.load_state_dict(torch.load(f"{args.ckpt_dir}/style_encoder.pth", map_location=args.device))
-
-    content_encoder = build_content_encoder(args)
-    content_encoder.load_state_dict(torch.load(f"{args.ckpt_dir}/content_encoder.pth", map_location=args.device))
-
-    model = FontDiffuserModelDPM(
-        unet=unet,
-        style_encoder=style_encoder,
-        content_encoder=content_encoder,
-    ).to(args.device)
-
-    scheduler = build_ddpm_scheduler(args)
-    pipe = FontDiffuserDPMPipeline(
-        model=model,
-        ddpm_train_scheduler=scheduler,
-        model_type=args.model_type,
-        guidance_type=args.guidance_type,
-        guidance_scale=args.guidance_scale,
-    )
-    return pipe
-
-
-
-def get_style_images(english_dir, chinese_dir):
-    font_dirs = []
-    for base in [english_dir, chinese_dir]:
-        for f in os.listdir(base):
-            full_path = os.path.join(base, f)
-            if os.path.isdir(full_path):
-                font_dirs.append(full_path)
-
-    style_images = []
-    for font_dir in font_dirs:
-        for fname in os.listdir(font_dir):
-            if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-                style_images.append(os.path.join(font_dir, fname))
-    return style_images
-
+def collect_images(root_dir):
+    paths = []
+    for folder in os.listdir(root_dir):
+        full_dir = os.path.join(root_dir, folder)
+        if os.path.isdir(full_dir):
+            for fname in os.listdir(full_dir):
+                if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                    paths.append(os.path.join(full_dir, fname))
+    return paths
 
 
 def batch_sampling(args):
-    pipe = load_pipeline(args)
+    pipe = load_fontdiffuer_pipeline(args)
     os.makedirs(args.save_dir, exist_ok=True)
     random.seed(args.seed)
     set_seed(args.seed)
 
-    # Load dataset
-    english_contents = [
-        os.path.join(args.english_dir, fnt, fname)
-        for fnt in os.listdir(args.english_dir)
-        for fname in os.listdir(os.path.join(args.english_dir, fnt))
-        if fname.lower().endswith((".png", ".jpg", ".jpeg"))
-    ]
-    chinese_contents = [
-        os.path.join(args.chinese_dir, fnt, fname)
-        for fnt in os.listdir(args.chinese_dir)
-        for fname in os.listdir(os.path.join(args.chinese_dir, fnt))
-        if fname.lower().endswith((".png", ".jpg", ".jpeg"))
-    ]
-
+    english_contents = collect_images(args.english_dir)
+    chinese_contents = collect_images(args.chinese_dir)
     english_styles = chinese_contents
     chinese_styles = english_contents
-    print(f"🖋 English content: {len(english_contents)} | Chinese content: {len(chinese_contents)}")
 
-    # JSON path
+    print(f"English content: {len(english_contents)} | Chinese content: {len(chinese_contents)}")
+
     json_path = os.path.join(args.save_dir, "samples.json")
 
-    # Load or create new sample list
     if os.path.exists(json_path):
-        print(f"Reusing existing batch from: {json_path}")
+        print(f"Reusing existing batch from {json_path}")
         with open(json_path, "r") as f:
             samples = json.load(f)
     else:
-        print(f"Creating new random batch ({args.num_samples} samples)")
+        print(f"Creating new batch with {args.num_samples} samples")
         all_contents = english_contents + chinese_contents
         samples = []
         for _ in range(args.num_samples):
-            content_path = random.choice(all_contents)
-            is_english = "english" in content_path.lower()
-            style_path = random.choice(chinese_styles) if is_english else random.choice(english_styles)
-            samples.append({"content": content_path, "style": style_path})
+            content = random.choice(all_contents)
+            is_eng = "english" in content.lower()
+            style = random.choice(chinese_styles) if is_eng else random.choice(english_styles)
+            samples.append({"content": content, "style": style})
         with open(json_path, "w") as f:
             json.dump(samples, f, indent=2)
-        print(f"Saved batch to {json_path}")
+        print(f"Saved sample batch to {json_path}")
 
-    # Sampling loop
-    for i, sample in enumerate(tqdm(samples, desc="Sampling")):
-        content_path = sample["content"]
-        style_path = sample["style"]
-
+    for i, s in enumerate(tqdm(samples, desc="Sampling")):
+        content_path, style_path = s["content"], s["style"]
         content_img = preprocess_image(content_path, args.content_image_size).to(args.device)
         style_img = preprocess_image(style_path, args.style_image_size).to(args.device)
 
@@ -149,7 +89,13 @@ def batch_sampling(args):
             )
 
         out_img = out_imgs[0]
-        out_pil = Image.fromarray(((out_img / 2 + 0.5).clamp(0, 1).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
+        if isinstance(out_img, torch.Tensor):
+            out_pil = Image.fromarray(
+                ((out_img / 2 + 0.5).clamp(0, 1)
+                 .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+            )
+        else:
+            out_pil = out_img
 
         content_font = os.path.basename(os.path.dirname(content_path))
         style_font = os.path.basename(os.path.dirname(style_path))
@@ -163,18 +109,16 @@ def batch_sampling(args):
             style_image_path=style_path,
             resolution=args.content_image_size[0],
         )
-
         os.rename(os.path.join(args.save_dir, "out_with_cs.jpg"), os.path.join(args.save_dir, out_name))
 
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
-    print(f"\nCompressing results to {zip_path} ...")
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    print(f"Compressing results to {zip_path}")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(args.save_dir):
-            for file in files:
-                zipf.write(os.path.join(root, file),
-                           arcname=os.path.relpath(os.path.join(root, file), args.save_dir))
-    print(f"Results saved and zipped at: {zip_path}")
-
+            for f in files:
+                zf.write(os.path.join(root, f),
+                         arcname=os.path.relpath(os.path.join(root, f), args.save_dir))
+    print(f"Results saved to {zip_path}")
 
 
 def main():
