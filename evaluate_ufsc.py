@@ -10,7 +10,7 @@ from accelerate.utils import set_seed
 from torchvision import transforms
 
 from sample import sampling, load_fontdiffuer_pipeline
-from utils import save_args_to_yaml, save_image_with_content_style
+from utils import save_args_to_yaml, save_image_with_content_style, save_single_image
 
 
 def preprocess_image(path, size):
@@ -148,6 +148,11 @@ def batch_sampling(args):
             style_image_path=style_path,
             resolution=args.content_image_size[0],
         )
+
+        save_single_image(
+            save_dir=args.save_image_dir, image=out_imgs[0],
+        )
+        
         os.rename(os.path.join(args.save_dir, "out_with_cs.jpg"), os.path.join(args.save_dir, out_name))
 
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
