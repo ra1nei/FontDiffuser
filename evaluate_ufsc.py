@@ -34,6 +34,18 @@ def collect_images(root_dir):
     return paths
 
 
+
+def get_lang_from_path(path):
+    parts = path.lower().split(os.sep)
+    if "english" in parts:
+        return "english"
+    elif "chinese" in parts:
+        return "chinese"
+    else:
+        return None
+
+
+
 def batch_sampling(args):
     pipe = load_fontdiffuer_pipeline(args)
     os.makedirs(args.save_dir, exist_ok=True)
@@ -59,8 +71,13 @@ def batch_sampling(args):
         samples = []
         for _ in range(args.num_samples):
             content = random.choice(all_contents)
-            is_eng = "english" in content.lower()
-            style = random.choice(chinese_styles) if is_eng else random.choice(english_styles)
+            
+            lang = get_lang_from_path(content)
+            if lang == "english":
+                style = random.choice(chinese_styles)
+            elif lang == "chinese":
+                style = random.choice(english_styles)
+
             samples.append({"content": content, "style": style})
 
             # DEBUG
