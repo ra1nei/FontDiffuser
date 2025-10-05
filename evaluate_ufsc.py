@@ -166,6 +166,10 @@ def batch_sampling(args):
         print(f"Saved sample batch to {json_path}")
 
     metrics_list = []
+    gen_dir = os.path.join(args.save_dir, "generated")
+    real_dir = os.path.join(args.save_dir, "targets_for_fid")
+    os.makedirs(gen_dir, exist_ok=True)
+    os.makedirs(real_dir, exist_ok=True)
 
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
         content_path, style_path = s["content"], s["style"]
@@ -201,9 +205,9 @@ def batch_sampling(args):
         content_font = os.path.basename(os.path.dirname(content_path))
         style_font = os.path.basename(os.path.dirname(style_path))
         out_name = f"{i:04d}_gen.jpg"
-        out_path = os.path.join(args.save_dir, out_name)
+        out_path = os.path.join(gen_dir, out_name)
 
-        save_single_image(args.save_dir, out_pil, out_name)
+        save_single_image(gen_dir, out_pil, out_name)
         save_image_with_content_style(
             save_dir=args.save_dir,
             image=out_pil,
@@ -244,22 +248,29 @@ def batch_sampling(args):
 
     # Calculate FID
     print("\nCalculating FID ...")
-    gen_dir = args.save_dir
-    real_dir = os.path.join(args.save_dir, "targets_for_fid")
+    def find_non_images(folder):
+        bad = []
+        for f in os.listdir(folder):
+            if not f.lower().endswith((".png", ".jpg", ".jpeg")):
+                bad.append(f)
+        return bad
 
-    # Tạo thư mục chứa ảnh thật để so FID
-    os.makedirs(real_dir, exist_ok=True)
-    for mtr in metrics_list:
-        if os.path.exists(mtr["target"]):
-            target_img = Image.open(mtr["target"]).convert("RGB")
-            target_img.save(os.path.join(real_dir, os.path.basename(mtr["target"])))
+    bad_gen = find_non_images(gen_dir)
+    bad_real = find_non_images(real_dir)
+    if bad_gen:
+        print("Warning: non-image files in generated dir:", bad_gen)
+    if bad_real:
+        print("Warning: non-image files in real dir:", bad_real)
 
+    # call torch_fidelity on the two image-only directories
     metrics_fid = torch_fidelity.calculate_metrics(
         input1=gen_dir,
         input2=real_dir,
         cuda=True,
-        isc=False,  # IS = Inception Score, tắt nếu chỉ muốn FID
+        isc=False,
         fid=True,
+        batch_size=32,        # giảm kích thước batch nếu bị OOM / worker issues
+        save_cpu_ram=True,    # giữ ít RAM hơn, đôi khi ổn định hơn trong môi trường hạn chế
     )
 
     fid_value = metrics_fid["frechet_inception_distance"]
