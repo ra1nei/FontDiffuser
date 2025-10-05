@@ -179,7 +179,7 @@ def batch_sampling(args):
 
         content_font = os.path.basename(os.path.dirname(content_path))
         style_font = os.path.basename(os.path.dirname(style_path))
-        out_name = f"{content_font}_to_{style_font}_{i:04d}.jpg"
+        out_name = f"{i:04d}_gen.jpg"
         out_path = os.path.join(args.save_dir, out_name)
 
         save_single_image(args.save_dir, out_pil, out_name)
@@ -190,7 +190,7 @@ def batch_sampling(args):
             content_image_path=content_path,
             style_image_path=style_path,
             resolution=args.content_image_size[0],
-            filename=f"compare_{i:04d}.jpg"
+            filename=f"{i:04d}_compare.jpg"
         )
 
         target_path = get_target_path(content_path, style_path, args.english_dir, args.chinese_dir)
@@ -205,7 +205,7 @@ def batch_sampling(args):
             metrics["target"] = target_path
             metrics_list.append(metrics)
 
-            target_save_path = os.path.join(args.save_dir, f"target_{i:04d}.jpg")
+            target_save_path = os.path.join(args.save_dir, f"{i:04d}_target.jpg")
             target_pil.save(target_save_path)
         else:
             print(f"⚠️ Missing target for sample {i}: {target_path}")
@@ -217,7 +217,7 @@ def batch_sampling(args):
 
     if metrics_list:
         mean_vals = {k: np.mean([m[k] for m in metrics_list if k in m]) for k in ["SSIM", "LPIPS", "L1"]}
-        print("\n📊 Evaluation Summary:")
+        print("\nEvaluation Summary:")
         for k, v in mean_vals.items():
             print(f"{k}: {v:.4f}")
 
