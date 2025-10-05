@@ -146,11 +146,11 @@ def batch_sampling(args):
             raise RuntimeError(f"Không tìm được cặp hợp lệ cho {content_lang} sau {max_retry} lần thử!")
 
         for _ in range(num_per_lang):
-            samples.append(get_valid_pair(english_contents, chinese_styles, "english"))
+            samples.append(get_valid_pair(english_contents, english_styles, "english"))
         for _ in range(num_per_lang):
-            samples.append(get_valid_pair(chinese_contents, english_styles, "chinese"))
+            samples.append(get_valid_pair(chinese_contents, chinese_styles, "chinese"))
         if len(samples) < args.num_samples:
-            samples.append(get_valid_pair(english_contents, chinese_styles, "english"))
+            samples.append(get_valid_pair(english_contents, english_styles, "english"))
 
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(samples, f, ensure_ascii=False, indent=2)
