@@ -35,14 +35,30 @@ def collect_images(root_dir):
 
 
 
-def get_lang_from_path(path):
-    parts = path.lower().split(os.sep)
+def get_lang_from_path(path, english_dir, chinese_dir):
+    p = os.path.abspath(path)
+    eng = os.path.abspath(english_dir)
+    chi = os.path.abspath(chinese_dir)
+
+    # try commonpath (most robust)
+    try:
+        if os.path.commonpath([p, eng]) == eng:
+            return "english"
+    except ValueError:
+        pass
+    try:
+        if os.path.commonpath([p, chi]) == chi:
+            return "chinese"
+    except ValueError:
+        pass
+
+    # fallback: check path components for exact folder name
+    parts = os.path.normpath(p).lower().split(os.sep)
     if "english" in parts:
         return "english"
-    elif "chinese" in parts:
+    if "chinese" in parts:
         return "chinese"
-    else:
-        return None
+    return None
 
 
 
@@ -71,19 +87,15 @@ def batch_sampling(args):
         samples = []
         for _ in range(args.num_samples):
             content = random.choice(all_contents)
-            
-            lang = get_lang_from_path(content)
+            lang = get_lang_from_path(content, args.english_dir, args.chinese_dir)
             if lang == "english":
-                style = random.choice(chinese_styles)
+                style = random.choice(chinese_contents)
             elif lang == "chinese":
-                style = random.choice(english_styles)
-
+                style = random.choice(english_contents)
             samples.append({"content": content, "style": style})
 
-            # DEBUG
-            print(f"Content: {content} | Style: {style}")
-        with open(json_path, "w") as f:
-            json.dump(samples, f, indent=2)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
