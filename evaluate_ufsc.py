@@ -105,6 +105,35 @@ def save_single_image(save_dir, image, filename="out_single.png"):
 
 
 
+def save_image_with_content_style(save_dir, image, content_image_pil, content_image_path, style_image_path, resolution, filename="out_with_cs.jpg"):
+    """
+    Lưu ảnh ghép (content | style | output) cho từng mẫu.
+    - save_dir: thư mục lưu
+    - filename: tên file cần lưu, ví dụ 'compare_0001.jpg'
+    """
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Tạo canvas 3 cột (content, style, output)
+    new_image = Image.new('RGB', (resolution * 3, resolution))
+
+    # Load content image
+    if content_image_pil is not None:
+        content_image = content_image_pil
+    else:
+        content_image = Image.open(content_image_path).convert("RGB").resize((resolution, resolution), Image.BILINEAR)
+
+    # Load style image
+    style_image = Image.open(style_image_path).convert("RGB").resize((resolution, resolution), Image.BILINEAR)
+
+    # Ghép 3 ảnh: content | style | output
+    new_image.paste(content_image, (0, 0))
+    new_image.paste(style_image, (resolution, 0))
+    new_image.paste(image, (resolution * 2, 0))
+
+    save_path = os.path.join(save_dir, filename)
+    new_image.save(save_path)
+    return save_path
+
 # ====================== Main Sampling + Evaluation ======================
 
 def batch_sampling(args):
@@ -191,6 +220,7 @@ def batch_sampling(args):
             content_image_path=content_path,
             style_image_path=style_path,
             resolution=args.content_image_size[0],
+            filename=f"compare_{i:04d}.jpg"
         )
 
         # ====== Evaluate ======
