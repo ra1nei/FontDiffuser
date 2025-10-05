@@ -11,6 +11,7 @@ from torchvision import transforms
 from skimage.metrics import structural_similarity as ssim
 import torch.nn.functional as F
 import lpips
+import torch_fidelity
 
 from sample import sampling, load_fontdiffuer_pipeline
 from utils import save_args_to_yaml, save_image_with_content_style
@@ -130,16 +131,36 @@ def batch_sampling(args):
             samples = json.load(f)
     else:
         print(f"Creating new batch with {args.num_samples} samples")
-        all_contents = english_contents + chinese_contents
+
         samples = []
-        for _ in range(args.num_samples):
-            content = random.choice(all_contents)
-            lang = get_lang_from_path(content, args.english_dir, args.chinese_dir)
-            if lang == "english":
-                style = random.choice(chinese_contents)
-            else:
-                style = random.choice(english_contents)
-            samples.append({"content": content, "style": style})
+        num_per_lang = args.num_samples // 2
+        max_retry = 1000  # để tránh vòng lặp vô tận nếu dữ liệu bị lỗi
+
+        def get_valid_pair(content_pool, style_pool, content_lang):
+            """Tìm 1 cặp hợp lệ có target tồn tại"""
+            for _ in range(max_retry):
+                content = random.choice(content_pool)
+                style = random.choice(style_pool)
+                target_path = get_target_path(content, style, args.english_dir, args.chinese_dir)
+                if os.path.exists(target_path):
+                    return {"content": content, "style": style}
+            raise RuntimeError(f"Không tìm được cặp hợp lệ cho {content_lang} sau {max_retry} lần thử!")
+
+        print(f"Selecting {num_per_lang} English contents...")
+        for _ in range(num_per_lang):
+            pair = get_valid_pair(english_contents, chinese_contents, "english")
+            samples.append(pair)
+
+        print(f"Selecting {num_per_lang} Chinese contents...")
+        for _ in range(num_per_lang):
+            pair = get_valid_pair(chinese_contents, english_contents, "chinese")
+            samples.append(pair)
+
+        # nếu num_samples lẻ → thêm 1 mẫu English cho đủ
+        if len(samples) < args.num_samples:
+            pair = get_valid_pair(english_contents, chinese_contents, "english")
+            samples.append(pair)
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
@@ -221,6 +242,30 @@ def batch_sampling(args):
         for k, v in mean_vals.items():
             print(f"{k}: {v:.4f}")
 
+    # Calculate FID
+    print("\nCalculating FID ...")
+    gen_dir = args.save_dir
+    real_dir = os.path.join(args.save_dir, "targets_for_fid")
+
+    # Tạo thư mục chứa ảnh thật để so FID
+    os.makedirs(real_dir, exist_ok=True)
+    for mtr in metrics_list:
+        if os.path.exists(mtr["target"]):
+            target_img = Image.open(mtr["target"]).convert("RGB")
+            target_img.save(os.path.join(real_dir, os.path.basename(mtr["target"])))
+
+    metrics_fid = torch_fidelity.calculate_metrics(
+        input1=gen_dir,
+        input2=real_dir,
+        cuda=True,
+        isc=False,  # IS = Inception Score, tắt nếu chỉ muốn FID
+        fid=True,
+    )
+
+    fid_value = metrics_fid["frechet_inception_distance"]
+    print(f"\nFID: {fid_value:.4f}")
+
+    # ZIP file    
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
     print(f"Compressing results to {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

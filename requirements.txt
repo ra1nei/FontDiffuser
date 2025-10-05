@@ -12,3 +12,4 @@ torchvision
 wandb
 gdown
 lpips
+torch-fidelity
