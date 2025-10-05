@@ -59,6 +59,11 @@ def batch_sampling(args):
         samples = []
         for _ in range(args.num_samples):
             content = random.choice(all_contents)
+            
+            # DEBUG
+            print(content)
+            #
+            
             is_eng = "english" in content.lower()
             style = random.choice(chinese_styles) if is_eng else random.choice(english_styles)
             samples.append({"content": content, "style": style})
