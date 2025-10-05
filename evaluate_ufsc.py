@@ -203,6 +203,9 @@ def batch_sampling(args):
             metrics["output"] = out_path
             metrics["target"] = target_path
             metrics_list.append(metrics)
+            
+            target_save_path = os.path.join(args.save_dir, f"target_{i:04d}.jpg")
+            target_pil.save(target_save_path)
         else:
             print(f"⚠️ Missing target for sample {i}: {target_path}")
 
