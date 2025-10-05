@@ -170,7 +170,7 @@ def main():
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_samples", type=int, default=100)
-    parser.add_argument("--seed", type=int, default=42)
+    # parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     args.style_image_size = (96, 96)
