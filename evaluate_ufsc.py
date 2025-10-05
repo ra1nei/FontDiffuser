@@ -125,6 +125,7 @@ def batch_sampling(args):
 
     json_path = os.path.join(args.save_dir, "samples.json")
 
+    # Get the JSON file for later inference using different models
     if os.path.exists(json_path) and args.use_batch:
         print(f"Reusing existing batch from {json_path}")
         with open(json_path, "r") as f:
@@ -155,8 +156,9 @@ def batch_sampling(args):
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
+    # Main Inference
     gen_dir = os.path.join(args.save_dir, "generated")
-    real_dir = os.path.join(args.save_dir, "targets_for_fid")
+    real_dir = os.path.join(args.save_dir, "target")
     os.makedirs(gen_dir, exist_ok=True)
     os.makedirs(real_dir, exist_ok=True)
 
@@ -208,6 +210,8 @@ def batch_sampling(args):
         )
 
         target_path = get_target_path(content_path, style_path, args.english_dir, args.chinese_dir)
+        # DEBUG
+        print(target_path)
         if os.path.exists(target_path):
             target_pil, target_t = load_image_tensor(target_path, args.content_image_size)
             gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to("cuda")
@@ -220,6 +224,7 @@ def batch_sampling(args):
         else:
             print(f"⚠️ Missing target for sample {i}: {target_path}")
 
+    # Calculate metrics
     metrics_path = os.path.join(args.save_dir, "metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics_list, f, indent=2, ensure_ascii=False)
@@ -231,8 +236,7 @@ def batch_sampling(args):
         for k, v in mean_vals.items():
             print(f"{k}: {v:.4f}")
 
-    print("\nCalculating FID ...")
-
+    # Calculating FID
     def find_non_images(folder):
         bad = []
         for f in os.listdir(folder):
@@ -259,6 +263,7 @@ def batch_sampling(args):
     fid_value = metrics_fid["frechet_inception_distance"]
     print(f"\nFID: {fid_value:.4f}")
 
+    # ZIP
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
     print(f"Compressing results to {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
