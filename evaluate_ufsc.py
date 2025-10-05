@@ -15,9 +15,6 @@ import lpips
 from sample import sampling, load_fontdiffuer_pipeline
 from utils import save_args_to_yaml, save_image_with_content_style
 
-
-# ====================== Utility Functions ======================
-
 lpips_model = lpips.LPIPS(net='alex').to("cuda")
 
 
@@ -67,7 +64,6 @@ def get_lang_from_path(path, english_dir, chinese_dir):
 
 
 def get_target_path(content_path, style_path, english_dir, chinese_dir):
-    """Tìm ground truth tương ứng: style_font nhưng ở ngôn ngữ của content"""
     content_lang = get_lang_from_path(content_path, english_dir, chinese_dir)
     style_font = os.path.basename(os.path.dirname(style_path))
     char_filename = os.path.basename(content_path)
@@ -90,51 +86,28 @@ def load_image_tensor(path, size=(96, 96)):
     return img, tensor
 
 
-
 def save_single_image(save_dir, image, filename="out_single.png"):
-    """
-    Lưu một ảnh đơn (không có content/style overlay) vào thư mục save_dir.
-    - save_dir: thư mục lưu ảnh
-    - image: ảnh dạng PIL.Image
-    - filename: tên file cần lưu, ví dụ 'fontA_to_fontB_0001.jpg'
-    """
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, filename)
     image.save(save_path)
     return save_path
 
 
-
 def save_image_with_content_style(save_dir, image, content_image_pil, content_image_path, style_image_path, resolution, filename="out_with_cs.jpg"):
-    """
-    Lưu ảnh ghép (content | style | output) cho từng mẫu.
-    - save_dir: thư mục lưu
-    - filename: tên file cần lưu, ví dụ 'compare_0001.jpg'
-    """
     os.makedirs(save_dir, exist_ok=True)
-
-    # Tạo canvas 3 cột (content, style, output)
     new_image = Image.new('RGB', (resolution * 3, resolution))
-
-    # Load content image
     if content_image_pil is not None:
         content_image = content_image_pil
     else:
         content_image = Image.open(content_image_path).convert("RGB").resize((resolution, resolution), Image.BILINEAR)
-
-    # Load style image
     style_image = Image.open(style_image_path).convert("RGB").resize((resolution, resolution), Image.BILINEAR)
-
-    # Ghép 3 ảnh: content | style | output
     new_image.paste(content_image, (0, 0))
     new_image.paste(style_image, (resolution, 0))
     new_image.paste(image, (resolution * 2, 0))
-
     save_path = os.path.join(save_dir, filename)
     new_image.save(save_path)
     return save_path
 
-# ====================== Main Sampling + Evaluation ======================
 
 def batch_sampling(args):
     pipe = load_fontdiffuer_pipeline(args)
@@ -209,10 +182,7 @@ def batch_sampling(args):
         out_name = f"{content_font}_to_{style_font}_{i:04d}.jpg"
         out_path = os.path.join(args.save_dir, out_name)
 
-        # Save single image (clean)
         save_single_image(args.save_dir, out_pil, out_name)
-
-        # Save with content/style references
         save_image_with_content_style(
             save_dir=args.save_dir,
             image=out_pil,
@@ -223,7 +193,6 @@ def batch_sampling(args):
             filename=f"compare_{i:04d}.jpg"
         )
 
-        # ====== Evaluate ======
         target_path = get_target_path(content_path, style_path, args.english_dir, args.chinese_dir)
         if os.path.exists(target_path):
             target_pil, target_t = load_image_tensor(target_path, args.content_image_size)
@@ -241,27 +210,24 @@ def batch_sampling(args):
         else:
             print(f"⚠️ Missing target for sample {i}: {target_path}")
 
-    # ====== Save metrics summary ======
     metrics_path = os.path.join(args.save_dir, "metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics_list, f, indent=2, ensure_ascii=False)
     print(f"Saved metrics to {metrics_path}")
 
-    # Mean report
     if metrics_list:
         mean_vals = {k: np.mean([m[k] for m in metrics_list if k in m]) for k in ["SSIM", "LPIPS", "L1"]}
         print("\n📊 Evaluation Summary:")
         for k, v in mean_vals.items():
             print(f"{k}: {v:.4f}")
 
-    # Zip all
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
     print(f"Compressing results to {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(args.save_dir):
             for f in files:
-                zf.write(os.path.join(root, f),
-                         arcname=os.path.relpath(os.path.join(root, f), args.save_dir))
+                if f.endswith((".jpg", ".png", ".json")):
+                    zf.write(os.path.join(root, f), arcname=os.path.relpath(os.path.join(root, f), args.save_dir))
     print(f"Results saved to {zip_path}")
 
 
@@ -277,7 +243,7 @@ def main():
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_samples", type=int, default=100)
-    parser.add_argument("--use_batch", action="store_true", help="Reuse existing batch if available")
+    parser.add_argument("--use_batch", action="store_true")
     args = parser.parse_args()
 
     args.style_image_size = (96, 96)
