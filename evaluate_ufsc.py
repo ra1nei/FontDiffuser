@@ -49,7 +49,7 @@ def batch_sampling(args):
 
     json_path = os.path.join(args.save_dir, "samples.json")
 
-    if os.path.exists(json_path):
+    if os.path.exists(json_path) and args.use_batch == True:
         print(f"Reusing existing batch from {json_path}")
         with open(json_path, "r") as f:
             samples = json.load(f)
@@ -63,7 +63,7 @@ def batch_sampling(args):
             # DEBUG
             print(content)
             #
-            
+
             is_eng = "english" in content.lower()
             style = random.choice(chinese_styles) if is_eng else random.choice(english_styles)
             samples.append({"content": content, "style": style})
@@ -138,6 +138,7 @@ def main():
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_samples", type=int, default=100)
+    parser.add_argument("--use_batch", type=bool, default=False)
     args = parser.parse_args()
 
     args.style_image_size = (96, 96)
