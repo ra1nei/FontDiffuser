@@ -150,9 +150,9 @@ def batch_sampling(args):
         )
 
         save_single_image(
-            save_dir=args.save_image_dir, image=out_imgs[0],
+            save_dir=args.save_dir, image=out_imgs[0],
         )
-        
+
         os.rename(os.path.join(args.save_dir, "out_with_cs.jpg"), os.path.join(args.save_dir, out_name))
 
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
