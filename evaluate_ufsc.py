@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import lpips
 
 from sample import sampling, load_fontdiffuer_pipeline
-from utils import save_args_to_yaml, save_image_with_content_style, save_single_image
+from utils import save_args_to_yaml, save_image_with_content_style
 
 
 # ====================== Utility Functions ======================
@@ -88,6 +88,21 @@ def load_image_tensor(path, size=(96, 96)):
     img = Image.open(path).convert("RGB").resize(size)
     tensor = transforms.ToTensor()(img).unsqueeze(0).to("cuda")
     return img, tensor
+
+
+
+def save_single_image(save_dir, image, filename="out_single.png"):
+    """
+    Lưu một ảnh đơn (không có content/style overlay) vào thư mục save_dir.
+    - save_dir: thư mục lưu ảnh
+    - image: ảnh dạng PIL.Image
+    - filename: tên file cần lưu, ví dụ 'fontA_to_fontB_0001.jpg'
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, filename)
+    image.save(save_path)
+    return save_path
+
 
 
 # ====================== Main Sampling + Evaluation ======================
