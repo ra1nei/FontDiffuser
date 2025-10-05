@@ -131,13 +131,11 @@ def batch_sampling(args):
             samples = json.load(f)
     else:
         print(f"Creating new batch with {args.num_samples} samples")
-
         samples = []
         num_per_lang = args.num_samples // 2
-        max_retry = 1000  # để tránh vòng lặp vô tận nếu dữ liệu bị lỗi
+        max_retry = 1000
 
         def get_valid_pair(content_pool, style_pool, content_lang):
-            """Tìm 1 cặp hợp lệ có target tồn tại"""
             for _ in range(max_retry):
                 content = random.choice(content_pool)
                 style = random.choice(style_pool)
@@ -146,30 +144,23 @@ def batch_sampling(args):
                     return {"content": content, "style": style}
             raise RuntimeError(f"Không tìm được cặp hợp lệ cho {content_lang} sau {max_retry} lần thử!")
 
-        print(f"Selecting {num_per_lang} English contents...")
         for _ in range(num_per_lang):
-            pair = get_valid_pair(english_contents, chinese_contents, "english")
-            samples.append(pair)
-
-        print(f"Selecting {num_per_lang} Chinese contents...")
+            samples.append(get_valid_pair(english_contents, chinese_styles, "english"))
         for _ in range(num_per_lang):
-            pair = get_valid_pair(chinese_contents, english_contents, "chinese")
-            samples.append(pair)
-
-        # nếu num_samples lẻ → thêm 1 mẫu English cho đủ
+            samples.append(get_valid_pair(chinese_contents, english_styles, "chinese"))
         if len(samples) < args.num_samples:
-            pair = get_valid_pair(english_contents, chinese_contents, "english")
-            samples.append(pair)
+            samples.append(get_valid_pair(english_contents, chinese_styles, "english"))
 
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
-    metrics_list = []
     gen_dir = os.path.join(args.save_dir, "generated")
     real_dir = os.path.join(args.save_dir, "targets_for_fid")
     os.makedirs(gen_dir, exist_ok=True)
     os.makedirs(real_dir, exist_ok=True)
+
+    metrics_list = []
 
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
         content_path, style_path = s["content"], s["style"]
@@ -202,12 +193,10 @@ def batch_sampling(args):
         else:
             out_pil = out_img
 
-        content_font = os.path.basename(os.path.dirname(content_path))
-        style_font = os.path.basename(os.path.dirname(style_path))
         out_name = f"{i:04d}_gen.jpg"
         out_path = os.path.join(gen_dir, out_name)
-
         save_single_image(gen_dir, out_pil, out_name)
+
         save_image_with_content_style(
             save_dir=args.save_dir,
             image=out_pil,
@@ -224,14 +213,10 @@ def batch_sampling(args):
             gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to("cuda")
             metrics = compute_metrics(out_pil, target_pil, gen_t, target_t)
             metrics["sample_id"] = i
-            metrics["content"] = content_font
-            metrics["style"] = style_font
             metrics["output"] = out_path
             metrics["target"] = target_path
             metrics_list.append(metrics)
-
-            target_save_path = os.path.join(args.save_dir, f"{i:04d}_target.jpg")
-            target_pil.save(target_save_path)
+            target_pil.save(os.path.join(real_dir, os.path.basename(target_path)))
         else:
             print(f"⚠️ Missing target for sample {i}: {target_path}")
 
@@ -246,8 +231,8 @@ def batch_sampling(args):
         for k, v in mean_vals.items():
             print(f"{k}: {v:.4f}")
 
-    # Calculate FID
     print("\nCalculating FID ...")
+
     def find_non_images(folder):
         bad = []
         for f in os.listdir(folder):
@@ -255,28 +240,25 @@ def batch_sampling(args):
                 bad.append(f)
         return bad
 
-    bad_gen = find_non_images(gen_dir)
-    bad_real = find_non_images(real_dir)
-    if bad_gen:
-        print("Warning: non-image files in generated dir:", bad_gen)
-    if bad_real:
-        print("Warning: non-image files in real dir:", bad_real)
+    for folder in [gen_dir, real_dir]:
+        bad_files = find_non_images(folder)
+        for bf in bad_files:
+            os.remove(os.path.join(folder, bf))
 
-    # call torch_fidelity on the two image-only directories
     metrics_fid = torch_fidelity.calculate_metrics(
         input1=gen_dir,
         input2=real_dir,
         cuda=True,
         isc=False,
         fid=True,
-        batch_size=32,        # giảm kích thước batch nếu bị OOM / worker issues
-        save_cpu_ram=True,    # giữ ít RAM hơn, đôi khi ổn định hơn trong môi trường hạn chế
+        batch_size=16,
+        save_cpu_ram=True,
+        num_workers=0
     )
 
     fid_value = metrics_fid["frechet_inception_distance"]
     print(f"\nFID: {fid_value:.4f}")
 
-    # ZIP file    
     zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
     print(f"Compressing results to {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
