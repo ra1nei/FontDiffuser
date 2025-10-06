@@ -32,17 +32,13 @@ def preprocess_image(path, size, device="cuda"):
 
 
 def collect_images(root_dir):
-    """Thu thập tất cả ảnh (png/jpg/jpeg) trong các folder con của root_dir."""
     paths = []
-    if not os.path.exists(root_dir):
-        return paths
-    for folder in os.listdir(root_dir):
-        full_dir = os.path.join(root_dir, folder)
-        if os.path.isdir(full_dir):
-            for fname in os.listdir(full_dir):
-                if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-                    paths.append(os.path.join(full_dir, fname))
+    for root, _, files in os.walk(root_dir):
+        for fname in files:
+            if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                paths.append(os.path.join(root, fname))
     return paths
+
 
 
 def get_lang_from_path(path, english_dir, chinese_dir):
