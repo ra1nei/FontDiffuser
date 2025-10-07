@@ -102,7 +102,15 @@ def batch_sampling(args):
 
         def get_cross_lang_pair_diff_char(source_dir, style_pool, style_lang_name):
             max_retry = 1000
-            source_list = collect_images(source_dir)
+            # Xác định content_dir theo ngôn ngữ của style
+            if "english" in style_lang_name.lower():
+                # style là Tàu → content phải là Anh
+                content_dir = args.english_dir
+            else:
+                # style là Anh → content phải là Tàu
+                content_dir = args.chinese_dir
+
+            source_list = collect_images(content_dir)  # lấy ảnh content đúng ngôn ngữ
             for _ in range(max_retry):
                 content = random.choice(source_list)
                 style = random.choice(style_pool)
