@@ -17,8 +17,8 @@ from datetime import datetime
 from sample import sampling, load_fontdiffuer_pipeline
 from utils import save_args_to_yaml, save_image_with_content_style
 
-# LPIPS model (đặt lên device sau khi parse args nếu cần nhiều GPU)
-lpips_model = lpips.LPIPS(net='alex').to("cuda")
+# LPIPS model (khởi tạo ở global, chuyển device trong main())
+lpips_model = lpips.LPIPS(net='alex')
 
 
 def preprocess_image(path, size, device="cuda"):
@@ -33,12 +33,13 @@ def preprocess_image(path, size, device="cuda"):
 
 def collect_images(root_dir):
     paths = []
+    if not os.path.exists(root_dir):
+        return paths
     for root, _, files in os.walk(root_dir):
         for fname in files:
             if fname.lower().endswith((".png", ".jpg", ".jpeg")):
                 paths.append(os.path.join(root, fname))
     return paths
-
 
 
 def get_lang_from_path(path, english_dir, chinese_dir):
@@ -72,7 +73,7 @@ def get_target_path(content_path, style_path, english_dir, chinese_dir):
     - style_font là tên folder của style_path (parent folder của style image)
     - ưu tiên tìm target under english_dir/style_font/<char_filename> nếu tồn tại,
       nếu không, thử chinese_dir/style_font/<char_filename>.
-    - Nếu cả hai không có, trả về đường dẫn 'expected' (english_dir/style_font/filename).
+    - Nếu cả hai không có, trả về eng_candidate làm expected.
     """
     style_font = os.path.basename(os.path.dirname(style_path))
     char_filename = os.path.basename(content_path)
@@ -83,7 +84,6 @@ def get_target_path(content_path, style_path, english_dir, chinese_dir):
         return eng_candidate
     if os.path.exists(chi_candidate):
         return chi_candidate
-    # fallback: nếu không thấy, trả về eng_candidate làm đường dẫn mong đợi
     return eng_candidate
 
 
@@ -93,7 +93,6 @@ def compute_metrics(gen_pil, target_pil, gen_t, target_t):
     try:
         ssim_val = ssim(img1, img2, channel_axis=-1, data_range=255)
     except Exception:
-        # fallback nếu hình có format khác
         ssim_val = float(np.nan)
     lpips_val = lpips_model(gen_t, target_t).item()
     l1_val = F.l1_loss(gen_t, target_t).item()
@@ -137,76 +136,100 @@ def batch_sampling(args):
 
     # --- source content là từ source_dir ---
     source_contents = collect_images(args.source_dir)
-    # dùng english/chinese dirs để tìm target; styles lấy từ english/chinese dirs too (bằng cách collect images there)
+    # dùng english/chinese dirs để tìm target; styles lấy từ english/chinese dirs too
     english_contents = collect_images(args.english_dir)
     chinese_contents = collect_images(args.chinese_dir)
-    # styles pools: lấy tất cả image paths (các ảnh style nằm trong thư mục của style)
-    english_style_images = collect_images(args.english_dir)
-    chinese_style_images = collect_images(args.chinese_dir)
+    # styles pools: tất cả image paths trong english_dir / chinese_dir
+    english_styles = collect_images(args.english_dir)
+    chinese_styles = collect_images(args.chinese_dir)
 
-    # NOTE: trước code có english_styles = chinese_contents và ngược lại — giữ logic nếu bạn muốn cross-lang styles.
-    # Ở đây để đơn giản, ta dùng style pool tương ứng với language (có thể sửa sao cho cross nếu cần).
-    english_styles = english_style_images
-    chinese_styles = chinese_style_images
-
-    print(f"Source contents: {len(source_contents)} | English content (target dir sample): {len(english_contents)} | Chinese content (target dir sample): {len(chinese_contents)}")
+    print(f"Source contents: {len(source_contents)} | English (target dir) images: {len(english_contents)} | Chinese (target dir) images: {len(chinese_contents)}")
+    print(f"English styles pool: {len(english_styles)} | Chinese styles pool: {len(chinese_styles)}")
 
     json_path = os.path.join(args.save_dir, "samples.json")
 
-    # Get the JSON file for later inference using different models
+    # Get or create sample batch
     if os.path.exists(json_path) and args.use_batch:
         print(f"Reusing existing batch from {json_path}")
         with open(json_path, "r", encoding="utf-8") as f:
             samples = json.load(f)
     else:
-        print(f"Creating new batch with {args.num_samples} samples (content from source_dir)")
+        print(f"Creating new batch with {args.num_samples} samples (content from source_dir, cross-lang)")
         samples = []
         num_per_lang = args.num_samples // 2
 
-        def get_cross_lang_pair_diff_char(source_dir, style_pool, style_lang_name, args):
-            """
-            UFSC khác chữ khác ngôn ngữ:
-            - content lấy từ source_dir, random
-            - style lấy từ style_pool (thuộc ngôn ngữ khác)
-            - content và style KHÔNG ĐƯỢC TRÙNG glyph name
-            """
-            max_retry = 1000
-            source_contents = collect_images(source_dir)
+        # --- collect glyph basenames available in english/chinese target dirs ---
+        def collect_glyph_filenames(root_dir):
+            names = set()
+            for r, _, files in os.walk(root_dir):
+                for f in files:
+                    if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                        names.add(f)
+            return names
+
+        english_glyphs = collect_glyph_filenames(args.english_dir)
+        chinese_glyphs = collect_glyph_filenames(args.chinese_dir)
+
+        # --- split source_contents into english / chinese pools by glyph name existence ---
+        source_english_contents = [p for p in source_contents if os.path.basename(p) in english_glyphs]
+        source_chinese_contents = [p for p in source_contents if os.path.basename(p) in chinese_glyphs]
+
+        print(f"[DEBUG] source total={len(source_contents)}, english-matching={len(source_english_contents)}, chinese-matching={len(source_chinese_contents)}")
+
+        # early checks
+        if len(source_english_contents) == 0:
+            raise RuntimeError(f"No English content found in source_dir that matches English glyph names in {args.english_dir}")
+        if len(source_chinese_contents) == 0:
+            raise RuntimeError(f"No Chinese content found in source_dir that matches Chinese glyph names in {args.chinese_dir}")
+        if len(english_styles) == 0:
+            raise RuntimeError(f"No english style images found under {args.english_dir}")
+        if len(chinese_styles) == 0:
+            raise RuntimeError(f"No chinese style images found under {args.chinese_dir}")
+
+        # helper: sample across pools, enforce content != style glyph, and require target exists in target_dir_for_style
+        def sample_cross(content_pool, style_pool, target_dir_for_style, max_retry=2000):
             for _ in range(max_retry):
-                content = random.choice(source_contents)
+                content = random.choice(content_pool)
                 style = random.choice(style_pool)
-                # kiểm tra khác glyph
+                # avoid same glyph name
                 if os.path.basename(content) == os.path.basename(style):
                     continue
-
-                target_path = get_target_path(content, style, args.english_dir, args.chinese_dir)
+                style_font = os.path.basename(os.path.dirname(style))
+                char_filename = os.path.basename(content)
+                target_path = os.path.join(target_dir_for_style, style_font, char_filename)
                 if os.path.exists(target_path):
                     return {"content": content, "style": style, "target": target_path}
-            raise RuntimeError(f"Không tìm được cặp khác chữ cross-lang hợp lệ ({style_lang_name}) sau {max_retry} lần thử!")
+            return None
 
-
-        # tạo samples: nửa từ "english" (dựa trên target dir) và nửa từ "chinese"
-        # Lưu ý: content được chọn từ source_contents, nên phải có đủ variety trong source_dir
-        samples = []
-
+        # 1) English content (from source_english_contents) + Chinese style
         for _ in range(num_per_lang):
-            # English content + Chinese style (khác chữ)
-            samples.append(get_cross_lang_pair_diff_char(args.source_dir, chinese_styles, "english_target", args))
+            entry = sample_cross(source_english_contents, chinese_styles, args.chinese_dir)
+            if entry is None:
+                raise RuntimeError("Cannot find enough pairs for English-content + Chinese-style. Check data coverage.")
+            samples.append(entry)
 
+        # 2) Chinese content (from source_chinese_contents) + English style
         for _ in range(num_per_lang):
-            # Chinese content + English style (khác chữ)
-            samples.append(get_cross_lang_pair_diff_char(args.source_dir, english_styles, "chinese_target", args))
+            entry = sample_cross(source_chinese_contents, english_styles, args.english_dir)
+            if entry is None:
+                raise RuntimeError("Cannot find enough pairs for Chinese-content + English-style. Check data coverage.")
+            samples.append(entry)
 
-        # Nếu lẻ, thêm 1 sample random kiểu bất kỳ
+        # if odd num_samples, append one more (English-content + Chinese-style)
         while len(samples) < args.num_samples:
-            samples.append(get_cross_lang_pair_diff_char(args.source_dir, chinese_styles, "english_target", args))
+            entry = sample_cross(source_english_contents, chinese_styles, args.chinese_dir)
+            if entry is None:
+                entry = sample_cross(source_chinese_contents, english_styles, args.english_dir)
+            if entry is None:
+                raise RuntimeError("Cannot create extra sample to reach num_samples. Check data coverage.")
+            samples.append(entry)
 
-        # Save samples with full paths (content from source_dir)
+        # Save samples
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(samples, f, ensure_ascii=False, indent=2)
         print(f"Saved sample batch to {json_path}")
 
-    # Main Inference
+    # --- Main Inference (unchanged) ---
     gen_dir = os.path.join(args.save_dir, "generated")
     real_dir = os.path.join(args.save_dir, "target")
     os.makedirs(gen_dir, exist_ok=True)
@@ -260,12 +283,10 @@ def batch_sampling(args):
             filename=f"{i:04d}_compare.jpg"
         )
 
-        # target_path was precomputed when creating samples; but recompute if missing key
+        # target_path precomputed; but recompute if missing
         if target_path is None:
             target_path = get_target_path(content_path, style_path, args.english_dir, args.chinese_dir)
 
-        # DEBUG
-        # print(f"Target path: {target_path}")
         if os.path.exists(target_path):
             target_pil, target_t = load_image_tensor(target_path, args.content_image_size, device=args.device)
             gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to(args.device)
