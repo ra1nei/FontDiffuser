@@ -120,7 +120,8 @@ def batch_sampling(args):
 
                 # 3. Lấy glyph name từ content_lang_img
                 glyph_name = os.path.basename(os.path.dirname(content_lang_img))
-
+                print(glyph_name)
+                
                 # 4. Tìm ảnh tương ứng của glyph đó trong source_dir
                 glyph_dir = os.path.join(source_dir, glyph_name)
                 if not os.path.isdir(glyph_dir):
