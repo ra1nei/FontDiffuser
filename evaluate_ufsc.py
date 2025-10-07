@@ -120,20 +120,20 @@ def batch_sampling(args):
 
                 # 3. Lấy glyph name từ content_lang_img
                 glyph_name = os.path.basename(os.path.dirname(content_lang_img))
-                print(glyph_name)
                 
                 # 4. Tìm ảnh tương ứng của glyph đó trong source_dir
                 glyph_dir = os.path.join(source_dir, glyph_name)
                 if not os.path.isdir(glyph_dir):
                     continue  # nếu không có glyph tương ứng, bỏ qua
-
+                        
                 glyph_images = collect_images(glyph_dir)
                 if not glyph_images:
                     continue
 
                 # 5. Chọn ảnh cụ thể trong glyph đó làm content
                 content = random.choice(glyph_images)
-
+                print(content)
+                
                 # 6. Bỏ qua nếu content và style trùng tên file
                 if os.path.basename(content) == os.path.basename(style):
                     continue
