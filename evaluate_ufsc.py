@@ -168,15 +168,17 @@ def save_image_with_content_style(save_dir, image, content_image_pil, content_im
     new_image.save(save_path)
     return save_path
 
-def load_char_list(txt_path, start_chinese_idx):
-    """Đọc danh sách ký tự trong file .txt, phân chia English / Chinese."""
-    with open(txt_path, "r", encoding="utf-8") as f:
-        chars = [line.strip() for line in f if line.strip()]
-    english_chars = chars[:start_chinese_idx]
-    chinese_chars = chars[start_chinese_idx:]
-    return english_chars, chinese_chars
+
 
 def batch_sampling(args):
+    def load_char_list(txt_path, start_chinese_idx):
+        """Đọc danh sách ký tự trong file .txt, phân chia English / Chinese."""
+        with open(txt_path, "r", encoding="utf-8") as f:
+            chars = [line.strip() for line in f if line.strip()]
+        english_chars = chars[:start_chinese_idx]
+        chinese_chars = chars[start_chinese_idx:]
+        return english_chars, chinese_chars
+    
     pipe = load_fontdiffuer_pipeline(args)
     os.makedirs(args.save_dir, exist_ok=True)
     random.seed(args.seed)
