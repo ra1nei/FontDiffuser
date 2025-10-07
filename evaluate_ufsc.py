@@ -164,27 +164,36 @@ def batch_sampling(args):
         num_per_lang = args.num_samples // 2
         max_retry = 1000
 
-        def get_valid_pair_from_source(content_pool, style_pool, content_lang_name):
+        def get_valid_pair_from_lang(style_pool, lang_name, args):
+            """
+            - Chọn style ngẫu nhiên trong style_pool (thuộc English hoặc Chinese)
+            - Từ tên glyph, truy ngược ảnh content từ source_dir
+            - Tìm target (ground truth) tương ứng
+            """
+            max_retry = 1000
             for _ in range(max_retry):
-                content = random.choice(content_pool)
                 style = random.choice(style_pool)
-                # lọc content cùng lang
-                if get_lang_from_path(content, args.english_dir, args.chinese_dir) != content_lang_name:
+                char_filename = os.path.basename(style)
+                # content phải đến từ source_dir, theo glyph name
+                content = os.path.join(args.source_dir, char_filename)
+                if not os.path.exists(content):
                     continue
                 target_path = get_target_path(content, style, args.english_dir, args.chinese_dir)
                 if os.path.exists(target_path):
                     return {"content": content, "style": style, "target": target_path}
+            raise RuntimeError(f"Không tìm được cặp hợp lệ cho {lang_name} sau {max_retry} lần thử!")
 
 
         # tạo samples: nửa từ "english" (dựa trên target dir) và nửa từ "chinese"
         # Lưu ý: content được chọn từ source_contents, nên phải có đủ variety trong source_dir
         for _ in range(num_per_lang):
-            samples.append(get_valid_pair_from_source(source_contents, english_styles, "english"))
+            samples.append(get_valid_pair_from_lang(english_styles, "english", args))
         for _ in range(num_per_lang):
-            samples.append(get_valid_pair_from_source(source_contents, chinese_styles, "chinese"))
+            samples.append(get_valid_pair_from_lang(chinese_styles, "chinese", args))
+
         # nếu lẻ, thêm 1 sample nữa
         while len(samples) < args.num_samples:
-            samples.append(get_valid_pair_from_source(source_contents, english_styles, "english"))
+            samples.append(get_valid_pair_from_lang(source_contents, english_styles, "english"))
 
         # Save samples with full paths (content from source_dir)
         with open(json_path, "w", encoding="utf-8") as f:
