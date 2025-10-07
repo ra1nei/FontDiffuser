@@ -166,8 +166,12 @@ def batch_sampling(args):
         save_single_image(gen_dir, out_pil, out_name)
 
         save_image_with_content_style(
-            args.save_dir, out_pil, None,
-            content_path, style_path, args.content_image_size[0],
+            save_dir=args.save_dir,
+            image=out_pil,
+            content_image_pil=None,
+            content_image_path=content_path,
+            style_image_path=style_path,
+            resolution=args.content_image_size[0],
             filename=f"{i:04d}_compare.jpg"
         )
 
