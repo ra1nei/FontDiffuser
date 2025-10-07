@@ -25,7 +25,7 @@ def save_single_image(save_dir, image):
     image.save(save_path)
 
 
-def save_image_with_content_style(save_dir, image, content_image_pil, content_image_path, style_image_path, resolution):
+def save_image_with_content_style(save_dir, image, content_image_pil, content_image_path, style_image_path, resolution, filename):
     
     new_image = Image.new('RGB', (resolution*3, resolution))
     if content_image_pil is not None:
