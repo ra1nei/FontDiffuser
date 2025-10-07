@@ -163,40 +163,43 @@ def batch_sampling(args):
         samples = []
         num_per_lang = args.num_samples // 2
 
-        def get_cross_lang_pair(source_dir, style_pool, target_lang_name, args):
+        def get_cross_lang_pair_diff_char(source_dir, style_pool, style_lang_name, args):
             """
-            UFSC: style và content khác ngôn ngữ.
-            - style lấy từ style_pool (ví dụ Chinese)
-            - content lấy từ source_dir theo glyph name của style (nếu tồn tại)
-            - target path = target_lang_dir/style_font/<glyph_name>.png
+            UFSC khác chữ khác ngôn ngữ:
+            - content lấy từ source_dir, random
+            - style lấy từ style_pool (thuộc ngôn ngữ khác)
+            - content và style KHÔNG ĐƯỢC TRÙNG glyph name
             """
             max_retry = 1000
+            source_contents = collect_images(source_dir)
             for _ in range(max_retry):
+                content = random.choice(source_contents)
                 style = random.choice(style_pool)
-                char_filename = os.path.basename(style)
-                content = os.path.join(source_dir, char_filename)
-                if not os.path.exists(content):
+                # kiểm tra khác glyph
+                if os.path.basename(content) == os.path.basename(style):
                     continue
+
                 target_path = get_target_path(content, style, args.english_dir, args.chinese_dir)
                 if os.path.exists(target_path):
                     return {"content": content, "style": style, "target": target_path}
-            raise RuntimeError(f"Không tìm được cặp cross-lang hợp lệ ({target_lang_name}) sau {max_retry} lần thử!")
+            raise RuntimeError(f"Không tìm được cặp khác chữ cross-lang hợp lệ ({style_lang_name}) sau {max_retry} lần thử!")
+
 
         # tạo samples: nửa từ "english" (dựa trên target dir) và nửa từ "chinese"
         # Lưu ý: content được chọn từ source_contents, nên phải có đủ variety trong source_dir
         samples = []
 
-        # Half: English content + Chinese style
         for _ in range(num_per_lang):
-            samples.append(get_cross_lang_pair(args.source_dir, chinese_styles, "english_target", args))
+            # English content + Chinese style (khác chữ)
+            samples.append(get_cross_lang_pair_diff_char(args.source_dir, chinese_styles, "english_target", args))
 
-        # Half: Chinese content + English style
         for _ in range(num_per_lang):
-            samples.append(get_cross_lang_pair(args.source_dir, english_styles, "chinese_target", args))
+            # Chinese content + English style (khác chữ)
+            samples.append(get_cross_lang_pair_diff_char(args.source_dir, english_styles, "chinese_target", args))
 
         # Nếu lẻ, thêm 1 sample random kiểu bất kỳ
         while len(samples) < args.num_samples:
-            samples.append(get_cross_lang_pair(args.source_dir, chinese_styles, "english_target", args))
+            samples.append(get_cross_lang_pair_diff_char(args.source_dir, chinese_styles, "english_target", args))
 
         # Save samples with full paths (content from source_dir)
         with open(json_path, "w", encoding="utf-8") as f:
