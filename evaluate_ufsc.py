@@ -165,17 +165,16 @@ def batch_sampling(args):
         max_retry = 1000
 
         def get_valid_pair_from_source(content_pool, style_pool, content_lang_name):
-            """
-            Lấy content từ content_pool (đây là source dir), style từ style_pool,
-            và kiểm tra target có tồn tại không (dưới english_dir hoặc chinese_dir).
-            """
             for _ in range(max_retry):
                 content = random.choice(content_pool)
                 style = random.choice(style_pool)
+                # lọc content cùng lang
+                if get_lang_from_path(content, args.english_dir, args.chinese_dir) != content_lang_name:
+                    continue
                 target_path = get_target_path(content, style, args.english_dir, args.chinese_dir)
                 if os.path.exists(target_path):
                     return {"content": content, "style": style, "target": target_path}
-            raise RuntimeError(f"Không tìm được cặp hợp lệ cho {content_lang_name} sau {max_retry} lần thử!")
+
 
         # tạo samples: nửa từ "english" (dựa trên target dir) và nửa từ "chinese"
         # Lưu ý: content được chọn từ source_contents, nên phải có đủ variety trong source_dir
