@@ -764,10 +764,14 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--num_samples", type=int, default=100)
     parser.add_argument("--use_batch", action="store_true")
-    parser.add_argument("--lexicon_txt", type=str, required=True, help="File chứa danh sách ký tự (đã sort).")
-    parser.add_argument("--start_chinese_idx", type=int, required=True, help="Số dòng bắt đầu chữ Hán trong lexicon.")
+
+    parser.add_argument("--lexicon_txt", type=str, required=True,
+                        help="File chứa danh sách ký tự (đã sort).")
+    parser.add_argument("--start_chinese_idx", type=int, required=True,
+                        help="Số dòng bắt đầu chữ Hán trong lexicon.")
 
     args = parser.parse_args()
+
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     args.save_dir = os.path.join(args.save_dir, f"result_{timestamp}")
