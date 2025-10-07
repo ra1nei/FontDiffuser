@@ -113,6 +113,8 @@ def batch_sampling(args):
             source_list = collect_images(content_dir)  # lấy ảnh content đúng ngôn ngữ
             for _ in range(max_retry):
                 content = random.choice(source_list)
+                # DEBUG
+                print(content)
                 style = random.choice(style_pool)
                 if os.path.basename(content) == os.path.basename(style):
                     continue
