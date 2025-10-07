@@ -102,23 +102,46 @@ def batch_sampling(args):
 
         def get_cross_lang_pair_diff_char(source_dir, style_pool, style_lang_name):
             max_retry = 1000
-            # Xác định content_dir theo ngôn ngữ của style
+
+            # 1. Chọn thư mục content đúng ngôn ngữ đối nghịch
             if "english" in style_lang_name.lower():
                 # style là Tàu → content phải là Anh
-                content_dir = args.english_dir
+                content_lang_dir = args.english_dir
             else:
                 # style là Anh → content phải là Tàu
-                content_dir = args.chinese_dir
+                content_lang_dir = args.chinese_dir
 
-            source_list = collect_images(content_dir)  # lấy ảnh content đúng ngôn ngữ
+            content_list = collect_images(content_lang_dir)
+
             for _ in range(max_retry):
-                content = random.choice(source_list)
+                # 2. Chọn ngẫu nhiên 1 glyph content (vd. english/A/23.png)
+                content_lang_img = random.choice(content_list)
                 style = random.choice(style_pool)
+
+                # 3. Lấy glyph name từ content_lang_img
+                glyph_name = os.path.basename(os.path.dirname(content_lang_img))
+
+                # 4. Tìm ảnh tương ứng của glyph đó trong source_dir
+                glyph_dir = os.path.join(source_dir, glyph_name)
+                if not os.path.isdir(glyph_dir):
+                    continue  # nếu không có glyph tương ứng, bỏ qua
+
+                glyph_images = collect_images(glyph_dir)
+                if not glyph_images:
+                    continue
+
+                # 5. Chọn ảnh cụ thể trong glyph đó làm content
+                content = random.choice(glyph_images)
+
+                # 6. Bỏ qua nếu content và style trùng tên file
                 if os.path.basename(content) == os.path.basename(style):
                     continue
+
+                # 7. Tạo đường dẫn target
                 target = get_target_path(content, style, args.english_dir, args.chinese_dir)
                 if os.path.exists(target):
                     return {"content": content, "style": style, "target": target}
+
             raise RuntimeError(f"Không tìm được cặp cross-lang ({style_lang_name}) hợp lệ!")
 
         for _ in range(num_per_lang):
