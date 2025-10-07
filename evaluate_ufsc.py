@@ -238,7 +238,7 @@ def batch_sampling(args):
 
         for _ in range(num_per_lang):
             # Chinese content + English style (khác chữ)
-            samples.append(get_cross_lang_pair_diff_char(args.source_dir, english_styles, "chinese_target", args))
+            samples.append(get_cross_lang_pair_diff_char(args.source_dir, chinese_styles, "chinese_target", args))
 
         # Nếu lẻ, thêm 1 sample random kiểu bất kỳ
         while len(samples) < args.num_samples:
