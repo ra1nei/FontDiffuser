@@ -117,7 +117,9 @@ def batch_sampling(args):
                 glyph = random.choice(possible_glyphs)
 
                 content = os.path.join(source_dir, f"{glyph}.png")
-
+                ### DEBUG
+                print(content)
+                ### 
                 if not os.path.exists(content):
                     glyph_dir = os.path.join(source_dir, glyph)
                     if os.path.isdir(glyph_dir):
