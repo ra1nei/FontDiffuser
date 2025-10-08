@@ -101,44 +101,28 @@ def batch_sampling(args):
         samples, num_per_lang = [], args.num_samples // 2
 
         def get_cross_lang_pair_diff_char(source_dir, style_pool, style_lang_name):
-            with open(args.lexicon_txt, "r", encoding="utf-8") as f:
-                glyphs = [line.strip() for line in f if line.strip()]
-
-            english_glyphs = glyphs[:args.start_chinese_idx]
-            chinese_glyphs = glyphs[args.start_chinese_idx:]
-
-            if "english" in style_lang_name.lower():
-                possible_glyphs = english_glyphs
-            else:
-                possible_glyphs = chinese_glyphs
-
             max_retry = 1000
+            # Xác định content_dir theo ngôn ngữ của style
+            if "english" in style_lang_name.lower():
+                # style là Tàu → content phải là Anh
+                content_dir = args.english_dir
+            else:
+                # style là Anh → content phải là Tàu
+                content_dir = args.chinese_dir
+
+            source_list = collect_images(content_dir)  # lấy ảnh content đúng ngôn ngữ
             for _ in range(max_retry):
-                glyph = random.choice(possible_glyphs)
-
-                content = os.path.join(source_dir, f"{glyph}.png")
-                ### DEBUG
-                print(content)
-                ### 
-                if not os.path.exists(content):
-                    glyph_dir = os.path.join(source_dir, glyph)
-                    if os.path.isdir(glyph_dir):
-                        glyph_imgs = collect_images(glyph_dir)
-                        if glyph_imgs:
-                            content = random.choice(glyph_imgs)
-                        else:
-                            continue
-                    else:
-                        continue
-
+                content_lang_img = random.choice(source_list)
+                
                 style = random.choice(style_pool)
-
+                glyph_filename = os.path.basename(content_lang_img)
+                content = os.path.join(source_dir, glyph_filename)
+                print(content)
+                
                 if os.path.basename(content) == os.path.basename(style):
                     continue
-
                 target = get_target_path(content, style, args.english_dir, args.chinese_dir)
-
-                if not os.path.exists(target):
+                if os.path.exists(target):
                     return {"content": content, "style": style, "target": target}
             raise RuntimeError(f"Không tìm được cặp cross-lang ({style_lang_name}) hợp lệ!")
 
