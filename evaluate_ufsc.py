@@ -105,7 +105,7 @@ def batch_sampling(args):
             # Xác định content_dir theo ngôn ngữ của style
             if "english" in style_lang_name.lower():
                 # style là Tàu → content phải là Anh
-                content_dir = args.english_dir
+                content_dir = args.chinese_dir
             else:
                 # style là Anh → content phải là Tàu
                 content_dir = args.chinese_dir
@@ -262,7 +262,7 @@ def main():
     parser.add_argument("--start_chinese_idx", type=int, required=True)
     args = parser.parse_args()
 
-    args.save_dir = os.path.join(args.save_dir, f"UFSC_{args.num_samples}_{datetime.now():%H-%M-%S_%d-%m}")
+    args.save_dir = os.path.join(args.save_dir, f"SFUC_{args.num_samples}_{datetime.now():%H-%M-%S_%d-%m}")
     os.makedirs(args.save_dir, exist_ok=True)
     args.style_image_size = args.content_image_size = (96, 96)
     lpips_model.to(args.device)
