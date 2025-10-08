@@ -117,7 +117,6 @@ def batch_sampling(args):
                 style = random.choice(style_pool)
                 glyph_filename = os.path.basename(content_lang_img)
                 content = os.path.join(source_dir, glyph_filename)
-                print(content)
                 
                 if os.path.basename(content) == os.path.basename(style):
                     continue
