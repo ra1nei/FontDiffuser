@@ -105,7 +105,7 @@ def batch_sampling(args):
             # Xác định content_dir theo ngôn ngữ của style
             if "english" in style_lang_name.lower():
                 # style là Tàu → content phải là Anh
-                content_dir = args.chinese_dir
+                content_dir = args.english_dir
             else:
                 # style là Anh → content phải là Tàu
                 content_dir = args.chinese_dir
