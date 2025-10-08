@@ -262,7 +262,7 @@ def main():
     parser.add_argument("--start_chinese_idx", type=int, required=True)
     args = parser.parse_args()
 
-    args.save_dir = os.path.join(args.save_dir, f"UFSC_{args.num_samples}_{datetime.now():%H-%M-%S_%d-%m}")
+    args.save_dir = os.path.join(args.save_dir, f"UFUC_{args.num_samples}_{datetime.now():%H-%M-%S_%d-%m}")
     os.makedirs(args.save_dir, exist_ok=True)
     args.style_image_size = args.content_image_size = (96, 96)
     lpips_model.to(args.device)
