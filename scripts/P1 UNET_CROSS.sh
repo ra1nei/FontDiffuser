@@ -24,4 +24,4 @@ accelerate launch --num_processes=1 train.py \
     --lang_mode="cross" \
     --experience_name="P1-UNET-CROSS" \
     --output_dir="outputs/p1_unet_cross" \
-    --resume_ckpt="outputs/p1_unet_cross/global_step_200000"
+    --resume_ckpt="outputs/p1_unet_cross/global_step_240000"
