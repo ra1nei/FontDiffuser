@@ -120,7 +120,6 @@ def main():
     if args.phase_2:
         scr = build_scr(args=args)
 
-        # DEBUG
         ckpt = torch.load(args.scr_ckpt_path, map_location="cpu")
         if isinstance(ckpt, dict) and "model_state" in ckpt:
             missing, unexpected = scr.load_state_dict(ckpt["model_state"], strict=False)
@@ -160,7 +159,10 @@ def main():
         scr_mode=args.scr_mode,
         lang_mode=args.lang_mode
     )
-
+    ### DEBUG
+    print(len(train_font_dataset))
+    ###
+    
     train_dataloader = torch.utils.data.DataLoader(
         train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN()
     )
