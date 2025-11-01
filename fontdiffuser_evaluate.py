@@ -1,6 +1,7 @@
 import os
 import json
 import zipfile
+import random
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
@@ -8,7 +9,6 @@ from datetime import datetime
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-from accelerate.utils import set_seed
 from skimage.metrics import structural_similarity as ssim
 import lpips
 import torch_fidelity
@@ -62,7 +62,7 @@ def compute_metrics(gen_pil, target_pil, gen_t, target_t):
 def batch_sampling(args):
     pipe = load_fontdiffuer_pipeline(args)
     os.makedirs(args.save_dir, exist_ok=True)
-    set_seed(args.seed)
+    random.seed(123)
 
     chinese_images = collect_images(args.chinese_dir)
     print(f"Tổng số ảnh Chinese: {len(chinese_images)}")
@@ -204,12 +204,13 @@ def main():
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--use_batch", action="store_true")
-    parser.add_argument("--lexicon_txt", type=str, required=True)
-    parser.add_argument("--start_chinese_idx", type=int, required=True)
-    parser.add_argument("--seed", type=int, default=42)
+    # parser.add_argument("--lexicon_txt", type=str, required=True)
+    # parser.add_argument("--start_chinese_idx", type=int, required=True)
+    # parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--name", type=str)
     args = parser.parse_args()
 
-    args.save_dir = os.path.join(args.save_dir, f"SFUC_all_{datetime.now():%H-%M-%S_%d-%m}")
+    args.save_dir = os.path.join(args.save_dir, f"{args.name}_all_{datetime.now():%H-%M-%S_%d-%m}")
     os.makedirs(args.save_dir, exist_ok=True)
     args.style_image_size = args.content_image_size = (96, 96)
     lpips_model.to(args.device)
