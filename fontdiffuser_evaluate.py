@@ -78,7 +78,7 @@ def batch_sampling(args):
             continue
 
         # style (english A.png cùng font)
-        style_path = os.path.join(args.english_dir, font_name, "A.png")
+        style_path = os.path.join(args.english_dir, font_name, "A+.png")
         # DEBUG
         if i <= 10:
             print(f"style path: {style_path}")
