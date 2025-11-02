@@ -56,6 +56,8 @@ class FontDiffuserDPMPipeline():
         correcting_x0_fn=None,
         generator=None,
     ):
+        if isinstance(dm_size, int):
+            dm_size = (dm_size, dm_size)
         model_kwargs = {}
         model_kwargs["version"] = self.version
         model_kwargs["content_encoder_downsample_size"] = content_encoder_downsample_size
