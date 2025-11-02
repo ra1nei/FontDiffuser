@@ -74,18 +74,15 @@ def batch_sampling(args):
 
         # content (source glyph)
         content_path = os.path.join(args.source_dir, glyph_name)
-        
         if not os.path.exists(content_path):
             continue
 
         # style (english A.png cùng font)
         style_path = os.path.join(args.english_dir, font_name, "A.png")
-        
         if not os.path.exists(style_path):
             continue
         
-        print(f"style path: {style_path}, chinese path: {chi_path}")
-        
+        print(f"style path: {style_path}")        
         samples.append({
             "content": content_path,
             "style": style_path,
