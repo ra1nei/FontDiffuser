@@ -81,10 +81,10 @@ def batch_sampling(args):
 
         # style (english A.png cùng font)
         style_path = os.path.join(args.english_dir, font_name, "A.png")
-        if not os.path.exists(style_path):
-            continue
         # DEBUG
         print(f"style path: {style_path}")
+        if not os.path.exists(style_path):
+            continue
 
         samples.append({
             "content": content_path,
