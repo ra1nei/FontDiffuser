@@ -68,7 +68,7 @@ def batch_sampling(args):
     print(f"Tổng số ảnh Chinese: {len(chinese_images)}")
 
     samples = []
-    for chi_path in chinese_images:
+    for i, chi_path in enumerate(chinese_images):
         font_name = os.path.basename(os.path.dirname(chi_path))  # tên font
         glyph_name = os.path.basename(chi_path)  # ví dụ: 汉.png
 
@@ -82,7 +82,9 @@ def batch_sampling(args):
         # style (english A.png cùng font)
         style_path = os.path.join(args.english_dir, font_name, "A.png")
         # DEBUG
-        print(f"style path: {style_path}")
+        if i <= 10:
+            print(f"style path: {style_path}")
+            
         if not os.path.exists(style_path):
             continue
 
