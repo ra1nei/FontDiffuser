@@ -76,15 +76,13 @@ def batch_sampling(args):
         content_path = os.path.join(args.source_dir, glyph_name)
         if not os.path.exists(content_path):
             continue
-        # DEBUG
-        print(f"content path: {content_path}")        
 
         # style (english A.png cùng font)
         style_path = os.path.join(args.english_dir, font_name, "A.png")
         # DEBUG
         if i <= 10:
             print(f"style path: {style_path}")
-            
+
         if not os.path.exists(style_path):
             continue
 
