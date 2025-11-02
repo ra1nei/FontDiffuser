@@ -72,6 +72,8 @@ def batch_sampling(args):
         font_name = os.path.basename(os.path.dirname(chi_path))  # tên font
         glyph_name = os.path.basename(chi_path)  # ví dụ: 汉.png
 
+        ### DEBUG
+        print(f"font name: {font_name}, glyph_name: {glyph_name}")
         # content (source glyph)
         content_path = os.path.join(args.source_dir, glyph_name)
         if not os.path.exists(content_path):
