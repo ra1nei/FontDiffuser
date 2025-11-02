@@ -5,6 +5,7 @@ conda activate fontdiffuser
 
 echo ">>> Đang chạy trong môi trường: $(conda info --envs | grep '*' | awk '{print $1}')"
 
+##### SFUC
 git pull && python fontdiffuser_evaluate.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-same \
   --source_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_content/source \
@@ -33,4 +34,31 @@ git pull && python fontdiffuser_evaluate.py \
   --chinese_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_content/chinese \
   --name p2_cross_both_SFUC
 
-# conda deactivate
+##### UFSC
+git pull && python fontdiffuser_evaluate.py \
+  --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-same \
+  --source_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/source \
+  --english_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/english \
+  --chinese_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/chinese \
+  --name p1_same_UFSC
+
+git pull && python fontdiffuser_evaluate.py \
+  --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-cross \
+  --source_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/source \
+  --english_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/english \
+  --chinese_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/chinese \
+  --name p1_cross_UFSC
+
+git pull && python fontdiffuser_evaluate.py \
+  --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-same-both \
+  --source_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/source \
+  --english_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/english \
+  --chinese_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/chinese \
+  --name p2_same_both_UFSC
+
+git pull && python fontdiffuser_evaluate.py \
+  --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-cross-both \
+  --source_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/source \
+  --english_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/english \
+  --chinese_dir /datastore/cndt_hangdv/TDKD/font_translator_gan/datasets/test_unknown_style/chinese \
+  --name p2_cross_both_UFSC
