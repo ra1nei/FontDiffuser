@@ -16,7 +16,7 @@ class Evaluator():
         self.text2label = text2label
         self.evaluate_mode = opt.evaluate_mode
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.out_root = os.path.join(opt.results_dir, opt.name, f"{opt.phase}_{opt.epoch}", "metrics", opt.evaluate_mode)
+        self.out_root = os.path.join(opt.results_dir)
 
         # Metrics
         self.criterionL1 = torch.nn.L1Loss()
