@@ -1,107 +1,101 @@
 import os
+import argparse
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from PIL import Image
-from evaluator.ssim import SSIM, MSSSIM
-from evaluator.fid import FID
 import lpips
 import numpy as np
+from tqdm import tqdm
+from PIL import Image
+from torchvision import transforms
+from torchmetrics.image import StructuralSimilarityIndexMeasure, FrechetInceptionDistance
 
+# ======================
+#  Parse Arguments
+# ======================
+parser = argparse.ArgumentParser()
+parser.add_argument("--name", type=str, required=True, help="experiment name, e.g., p1_cross-SFUC")
+parser.add_argument("--model", type=str, required=True, help="model name, e.g., 851CHIKARA-DZUYOKU-kanaB-2")
+args = parser.parse_args()
 
-# -----------------------
-# Dataset khớp cấu trúc mới
-# -----------------------
-class SimpleResultDataset(Dataset):
-    def __init__(self, result_dir, image_size=(96, 96)):
-        self.result_dir = result_dir
-        self.image_size = image_size
+result_folder = f"./results/{args.model}-{args.name}"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.pairs = []
-        all_files = os.listdir(result_dir)
-        generated = [f for f in all_files if "|generated_images.png" in f]
+# ======================
+#  Define Metrics
+# ======================
+lpips_metric = lpips.LPIPS(net='vgg').to(device)
+ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+fid_metric = FrechetInceptionDistance(feature=64).to(device)
 
-        for gen in generated:
-            prefix = gen.replace("|generated_images.png", "")
-            gt = prefix + "|gt_images.png"
-            gt_path = os.path.join(result_dir, gt)
-            gen_path = os.path.join(result_dir, gen)
-            if os.path.exists(gt_path):
-                self.pairs.append((gt_path, gen_path, prefix))
+transform = transforms.Compose([
+    transforms.Resize((256, 256)),
+    transforms.ToTensor()
+])
 
-        self.transform = transforms.Compose([
-            transforms.Resize(image_size),
-            transforms.ToTensor(),
-        ])
+def load_image(path):
+    img = Image.open(path).convert('RGB')
+    return transform(img).unsqueeze(0).to(device)
 
-    def __len__(self):
-        return len(self.pairs)
+# ======================
+#  Collect Image Pairs
+# ======================
+pairs = []
+for f in os.listdir(result_folder):
+    if f.endswith("generated_images.png"):
+        base = f.replace("generated_images.png", "")
+        gt_path = os.path.join(result_folder, base + "gt_images.png")
+        gen_path = os.path.join(result_folder, f)
+        if os.path.exists(gt_path):
+            pairs.append((gen_path, gt_path))
 
-    def __getitem__(self, idx):
-        gt_path, gen_path, key = self.pairs[idx]
-        gt_img = Image.open(gt_path).convert("RGB")
-        gen_img = Image.open(gen_path).convert("RGB")
+print(f"Found {len(pairs)} image pairs in {result_folder}")
 
-        gt = self.transform(gt_img)
-        gen = self.transform(gen_img)
+# ======================
+#  Evaluate
+# ======================
+l1_scores, ssim_scores, lpips_scores = [], [], []
 
-        return gt, gen, key
+for gen_path, gt_path in tqdm(pairs, desc="Evaluating"):
+    gen = load_image(gen_path)
+    gt = load_image(gt_path)
 
+    # L1
+    l1 = torch.mean(torch.abs(gen - gt)).item()
+    l1_scores.append(l1)
 
-# -----------------------
-# Evaluation Runner
-# -----------------------
-def evaluate(result_dir, batch_size=1, device="cuda"):
-    dataset = SimpleResultDataset(result_dir)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    # SSIM
+    ssim = ssim_metric(gen, gt).item()
+    ssim_scores.append(ssim)
 
-    # metrics
-    ssim_fn = SSIM(window_size=11, size_average=True)
-    msssim_fn = MSSSIM(size_average=True)
-    lpips_fn = lpips.LPIPS(net='vgg').to(device)
-    fid_fn = FID(mode="style", num_classes=1, gpu_ids=[0])
+    # LPIPS
+    lp = lpips_metric(gen, gt).item()
+    lpips_scores.append(lp)
 
-    ssim_scores, msssim_scores, lpips_scores = [], [], []
+    # FID (1 batch = 1 cặp gen/gt)
+    fid_metric.update(gen, real=False)
+    fid_metric.update(gt, real=True)
 
-    # FID cần gom nhiều ảnh (sẽ gom hết rồi tính 1 lần)
-    gen_images, gt_images = [], []
+fid_value = fid_metric.compute().item()
 
-    for gt, gen, _ in dataloader:
-        gt, gen = gt.to(device), gen.to(device)
+# ======================
+#  Print & Save Results
+# ======================
+results_text = (
+    f"Model: {args.model}\n"
+    f"Experiment: {args.name}\n"
+    f"Total pairs: {len(pairs)}\n\n"
+    f"L1   : {np.mean(l1_scores):.6f}\n"
+    f"SSIM : {np.mean(ssim_scores):.6f}\n"
+    f"LPIPS: {np.mean(lpips_scores):.6f}\n"
+    f"FID  : {fid_value:.6f}\n"
+)
 
-        # SSIM & MSSSIM
-        ssim_val = ssim_fn(gen, gt).item()
-        msssim_val = msssim_fn(gen, gt).item()
-        ssim_scores.append(ssim_val)
-        msssim_scores.append(msssim_val)
+print("\n=== RESULTS ===")
+print(results_text)
 
-        # LPIPS
-        lpips_val = lpips_fn(gen, gt).mean().item()
-        lpips_scores.append(lpips_val)
+# Lưu ra file
+os.makedirs("./metrics", exist_ok=True)
+out_path = f"./metrics/{args.model}-{args.name}.txt"
+with open(out_path, "w") as f:
+    f.write(results_text)
 
-        # Lưu FID input
-        gen_images.append(gen.cpu())
-        gt_images.append(gt.cpu())
-
-    # ---- Tính FID ----
-    gen_images = torch.cat(gen_images, dim=0)
-    gt_images = torch.cat(gt_images, dim=0)
-    fid_score = fid_fn.compute_fid_given_tensors(gen_images, gt_images)
-
-    # ---- In kết quả ----
-    print(f"Evaluated on {len(dataset)} pairs")
-    print(f"SSIM:   {np.mean(ssim_scores):.4f}")
-    print(f"MSSSIM: {np.mean(msssim_scores):.4f}")
-    print(f"LPIPS:  {np.mean(lpips_scores):.4f}")
-    print(f"FID:    {fid_score:.4f}")
-
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", type=str, required=True)
-    parser.add_argument("--model", type=str, required=True)
-    args = parser.parse_args()
-
-    result_folder = f"./results/{args.model}-{args.name}"
-    evaluate(result_folder)
+print(f"Metrics saved to: {out_path}")
