@@ -1,23 +1,12 @@
 import os
-import json
-import zipfile
 import random
-import numpy as np
-from tqdm import tqdm
+import torch
 from PIL import Image
 from datetime import datetime
-import torch
-import torch.nn.functional as F
 from torchvision import transforms
-from skimage.metrics import structural_similarity as ssim
-import lpips
-import torch_fidelity
 
-from sample import sampling, load_fontdiffuer_pipeline
-from utils import save_image_with_content_style
+from sample import load_fontdiffuer_pipeline
 
-# LPIPS model (khởi tạo global)
-lpips_model = lpips.LPIPS(net='alex')
 
 # ======================
 # UTILS
@@ -31,30 +20,27 @@ def preprocess_image(path, size, device="cuda"):
     img = Image.open(path).convert("RGB")
     return tfm(img)[None, :].to(device)
 
+
 def collect_images(root_dir):
+    """Thu thập toàn bộ ảnh .png, .jpg, .jpeg trong thư mục"""
     return [
         os.path.join(root, f)
         for root, _, files in os.walk(root_dir)
         for f in files if f.lower().endswith((".png", ".jpg", ".jpeg"))
     ] if os.path.exists(root_dir) else []
 
-def load_image_tensor(path, size=(96, 96), device="cuda"):
-    img = Image.open(path).convert("RGB").resize(size)
-    return img, transforms.ToTensor()(img).unsqueeze(0).to(device)
 
 def save_single_image(save_dir, image, filename):
+    """Lưu ảnh PIL vào thư mục"""
     os.makedirs(save_dir, exist_ok=True)
     image.save(os.path.join(save_dir, filename))
 
-def compute_metrics(gen_pil, target_pil, gen_t, target_t):
-    img1, img2 = np.array(gen_pil), np.array(target_pil)
-    try:
-        ssim_val = ssim(img1, img2, channel_axis=-1, data_range=255)
-    except Exception:
-        ssim_val = float('nan')
-    lpips_val = lpips_model(gen_t, target_t).item()
-    l1_val = F.l1_loss(gen_t, target_t).item()
-    return {"SSIM": ssim_val, "LPIPS": lpips_val, "L1": l1_val}
+
+def load_image_tensor(path, size=(96, 96)):
+    """Đọc ảnh groundtruth để resize và lưu lại"""
+    img = Image.open(path).convert("RGB").resize(size)
+    return img
+
 
 # ======================
 # MAIN SAMPLING
@@ -68,16 +54,14 @@ def batch_sampling(args):
     print(f"Tổng số ảnh Chinese: {len(chinese_images)}")
 
     samples = []
-    for i, chi_path in enumerate(chinese_images):
-        font_name = os.path.basename(os.path.dirname(chi_path))  # tên font
-        glyph_name = os.path.splitext(os.path.basename(chi_path))[0]  # ví dụ: 一 (bỏ .png)
+    for chi_path in chinese_images:
+        font_name = os.path.basename(os.path.dirname(chi_path))
+        glyph_name = os.path.splitext(os.path.basename(chi_path))[0]
 
         content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
-        if not os.path.exists(content_path):
-            continue
-
         style_path = os.path.join(args.english_dir, font_name, "A+.png")
-        if not os.path.exists(style_path):
+
+        if not (os.path.exists(content_path) and os.path.exists(style_path)):
             continue
 
         samples.append({
@@ -90,17 +74,13 @@ def batch_sampling(args):
 
     print(f"Tổng số mẫu hợp lệ: {len(samples)}")
 
-    metrics_list = []
-
-    for i, s in enumerate(tqdm(samples, desc="Sampling")):
+    for s in samples:
         font_name, glyph_name = s["font"], s["glyph"]
         content_path, style_path, target_path = s["content"], s["style"], s["target"]
 
-        # Tiền xử lý ảnh content và style
         content_img = preprocess_image(content_path, args.content_image_size, args.device)
         style_img = preprocess_image(style_path, args.style_image_size, args.device)
 
-        # Sinh ảnh
         with torch.no_grad():
             out_imgs = pipe.generate(
                 content_images=content_img,
@@ -119,71 +99,21 @@ def batch_sampling(args):
             )
 
         out_img = out_imgs[0]
-        if isinstance(out_img, torch.Tensor):
-            out_pil = Image.fromarray(
-                ((out_img / 2 + 0.5).clamp(0, 1)
-                 .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-            )
-        else:
-            out_pil = out_img
+        out_pil = Image.fromarray(
+            ((out_img / 2 + 0.5).clamp(0, 1)
+             .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+        ) if isinstance(out_img, torch.Tensor) else out_img
 
-        # Tạo tên file theo yêu cầu
+        # Tên file như yêu cầu
         gen_filename = f"{font_name}_{glyph_name}_generated_images.png"
         gt_filename = f"{font_name}_{glyph_name}_gt_images.png"
 
-        # Lưu ảnh generated và groundtruth vào cùng thư mục
+        # Lưu ảnh generated và groundtruth
         save_single_image(args.save_dir, out_pil, gen_filename)
-
-        target_pil, target_t = load_image_tensor(target_path, args.content_image_size, args.device)
+        target_pil = load_image_tensor(target_path, args.content_image_size)
         save_single_image(args.save_dir, target_pil, gt_filename)
 
-        # Tính metric
-        gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to(args.device)
-        metrics = compute_metrics(out_pil, target_pil, gen_t, target_t)
-        metrics.update({
-            "font": font_name,
-            "glyph": glyph_name,
-            "generated": os.path.join(args.save_dir, gen_filename),
-            "groundtruth": os.path.join(args.save_dir, gt_filename)
-        })
-        metrics_list.append(metrics)
-
-    # Lưu metrics JSON
-    metrics_path = os.path.join(args.save_dir, "metrics.json")
-    with open(metrics_path, "w", encoding="utf-8") as f:
-        json.dump(metrics_list, f, indent=2, ensure_ascii=False)
-
-    # Tính trung bình
-    mean_vals = {k: np.nanmean([m[k] for m in metrics_list if k in m]) for k in ["SSIM", "LPIPS", "L1"]}
-    print("\nEvaluation Summary:")
-    for k, v in mean_vals.items():
-        print(f"{k}: {v:.4f}")
-
-    # FID giữa ảnh generated và groundtruth (toàn folder)
-    metrics_fid = torch_fidelity.calculate_metrics(
-        input1=args.save_dir, input2=args.save_dir,
-        cuda=True, isc=False, fid=True,
-        batch_size=16, save_cpu_ram=True, num_workers=0
-    )
-    fid_value = metrics_fid.get("frechet_inception_distance", float("nan"))
-    print(f"\nFID: {fid_value:.4f}")
-
-    # Lưu summary
-    with open(os.path.join(args.save_dir, "metrics_summary.txt"), "w", encoding="utf-8") as f:
-        f.write("Metric\tValue\n")
-        f.write(f"SSIM\t{mean_vals['SSIM']:.6f}\n")
-        f.write(f"LPIPS\t{mean_vals['LPIPS']:.6f}\n")
-        f.write(f"L1\t{mean_vals['L1']:.6f}\n")
-        f.write(f"FID\t{fid_value:.6f}\n")
-
-    # ZIP
-    zip_path = os.path.join(os.path.dirname(args.save_dir), f"{os.path.basename(args.save_dir)}.zip")
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, _, files in os.walk(args.save_dir):
-            for f in files:
-                if f.endswith((".png", ".json", ".txt")):
-                    zf.write(os.path.join(root, f), arcname=f)
-    print(f"Results saved to {zip_path}")
+    print(f"\n✅ Hoàn tất inference, ảnh lưu trong: {args.save_dir}")
 
 
 # ======================
@@ -198,19 +128,15 @@ def main():
     parser.add_argument("--chinese_dir", type=str, required=True)
     parser.add_argument("--save_dir", type=str, default="results")
     parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--use_batch", action="store_true")
-    # parser.add_argument("--lexicon_txt", type=str, required=True)
-    # parser.add_argument("--start_chinese_idx", type=int, required=True)
-    # parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--name", type=str)
     args = parser.parse_args()
 
     args.save_dir = os.path.join(args.save_dir, f"{args.name}_all_{datetime.now():%H-%M-%S_%d-%m}")
     os.makedirs(args.save_dir, exist_ok=True)
     args.style_image_size = args.content_image_size = (96, 96)
-    lpips_model.to(args.device)
 
     batch_sampling(args)
+
 
 if __name__ == "__main__":
     main()
