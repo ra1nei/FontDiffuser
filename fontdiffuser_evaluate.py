@@ -63,7 +63,7 @@ def evaluate(result_dir, evaluate_mode="style", gpu_ids=[0]):
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # khởi tạo Evaluator (không cần classifier)
-    evaluator = Evaluator(opt, num_classes=1, text2label={})
+    evaluator = Evaluator(opt, num_classes=847, text2label={})
 
     for data in dataloader:
         evaluator.evaluate(data)
