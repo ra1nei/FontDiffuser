@@ -47,15 +47,12 @@ class SimpleResultDataset(torch.utils.data.Dataset):
 # -----------------------
 # Run evaluation
 # -----------------------
-def evaluate(result_dir, evaluate_mode="style", gpu_ids=[0]):
+def evaluate(result_dir, gpu_ids=[0]):
     # Fake opt object để tương thích Evaluator
     class Opt:
         def __init__(self):
-            self.evaluate_mode = evaluate_mode
             self.results_dir = os.path.dirname(result_dir)
             self.name = os.path.basename(result_dir)
-            self.phase = "test"
-            self.epoch = "latest"
             self.gpu_ids = gpu_ids
 
     opt = Opt()

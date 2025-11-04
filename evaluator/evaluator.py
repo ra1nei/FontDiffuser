@@ -17,7 +17,6 @@ class Evaluator():
         self.evaluate_mode = opt.evaluate_mode
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.out_root = os.path.join(opt.results_dir)
-        print("DEBUG", self.out_root)
         # Metrics
         self.criterionL1 = torch.nn.L1Loss()
         self.criterionSSIM = SSIM().to(self.device)
