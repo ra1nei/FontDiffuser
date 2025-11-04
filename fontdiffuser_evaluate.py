@@ -70,43 +70,37 @@ def batch_sampling(args):
     samples = []
     for i, chi_path in enumerate(chinese_images):
         font_name = os.path.basename(os.path.dirname(chi_path))  # tên font
-        glyph_name = os.path.basename(chi_path)  # ví dụ: 汉.png
+        glyph_name = os.path.splitext(os.path.basename(chi_path))[0]  # ví dụ: 一 (bỏ .png)
 
-        # content (source glyph)
-        content_path = os.path.join(args.source_dir, glyph_name)
+        content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
         if not os.path.exists(content_path):
             continue
 
-        # style (english A.png cùng font)
         style_path = os.path.join(args.english_dir, font_name, "A+.png")
-        # DEBUG
-        if i <= 10:
-            print(f"style path: {style_path}")
-
         if not os.path.exists(style_path):
             continue
 
         samples.append({
             "content": content_path,
             "style": style_path,
-            "target": chi_path
+            "target": chi_path,
+            "font": font_name,
+            "glyph": glyph_name
         })
 
     print(f"Tổng số mẫu hợp lệ: {len(samples)}")
 
-    gen_dir = os.path.join(args.save_dir, "generated")
-    real_dir = os.path.join(args.save_dir, "target")
-    os.makedirs(gen_dir, exist_ok=True)
-    os.makedirs(real_dir, exist_ok=True)
-
     metrics_list = []
 
     for i, s in enumerate(tqdm(samples, desc="Sampling")):
+        font_name, glyph_name = s["font"], s["glyph"]
         content_path, style_path, target_path = s["content"], s["style"], s["target"]
 
+        # Tiền xử lý ảnh content và style
         content_img = preprocess_image(content_path, args.content_image_size, args.device)
         style_img = preprocess_image(style_path, args.style_image_size, args.device)
 
+        # Sinh ảnh
         with torch.no_grad():
             out_imgs = pipe.generate(
                 content_images=content_img,
@@ -133,52 +127,48 @@ def batch_sampling(args):
         else:
             out_pil = out_img
 
-        out_name = f"{i:04d}_gen.jpg"
-        save_single_image(gen_dir, out_pil, out_name)
+        # Tạo tên file theo yêu cầu
+        gen_filename = f"{font_name}_{glyph_name}_generated_images.png"
+        gt_filename = f"{font_name}_{glyph_name}_gt_images.png"
 
-        save_image_with_content_style(
-            save_dir=args.save_dir,
-            image=out_pil,
-            content_image_pil=None,
-            content_image_path=content_path,
-            style_image_path=style_path,
-            resolution=args.content_image_size[0],
-            filename=f"{i:04d}_compare.jpg"
-        )
+        # Lưu ảnh generated và groundtruth vào cùng thư mục
+        save_single_image(args.save_dir, out_pil, gen_filename)
 
         target_pil, target_t = load_image_tensor(target_path, args.content_image_size, args.device)
+        save_single_image(args.save_dir, target_pil, gt_filename)
+
+        # Tính metric
         gen_t = transforms.ToTensor()(out_pil).unsqueeze(0).to(args.device)
         metrics = compute_metrics(out_pil, target_pil, gen_t, target_t)
         metrics.update({
-            "sample_id": i,
-            "output": os.path.join(gen_dir, out_name),
-            "target": target_path,
-            "content": content_path,
-            "style": style_path
+            "font": font_name,
+            "glyph": glyph_name,
+            "generated": os.path.join(args.save_dir, gen_filename),
+            "groundtruth": os.path.join(args.save_dir, gt_filename)
         })
         metrics_list.append(metrics)
-        target_pil.save(os.path.join(real_dir, os.path.basename(target_path)))
 
+    # Lưu metrics JSON
     metrics_path = os.path.join(args.save_dir, "metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics_list, f, indent=2, ensure_ascii=False)
 
-    # Mean metrics
+    # Tính trung bình
     mean_vals = {k: np.nanmean([m[k] for m in metrics_list if k in m]) for k in ["SSIM", "LPIPS", "L1"]}
     print("\nEvaluation Summary:")
     for k, v in mean_vals.items():
         print(f"{k}: {v:.4f}")
 
-    # FID
+    # FID giữa ảnh generated và groundtruth (toàn folder)
     metrics_fid = torch_fidelity.calculate_metrics(
-        input1=gen_dir, input2=real_dir,
+        input1=args.save_dir, input2=args.save_dir,
         cuda=True, isc=False, fid=True,
         batch_size=16, save_cpu_ram=True, num_workers=0
     )
     fid_value = metrics_fid.get("frechet_inception_distance", float("nan"))
     print(f"\nFID: {fid_value:.4f}")
 
-    # Save summary
+    # Lưu summary
     with open(os.path.join(args.save_dir, "metrics_summary.txt"), "w", encoding="utf-8") as f:
         f.write("Metric\tValue\n")
         f.write(f"SSIM\t{mean_vals['SSIM']:.6f}\n")
@@ -191,9 +181,10 @@ def batch_sampling(args):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(args.save_dir):
             for f in files:
-                if f.endswith((".jpg", ".png", ".json", ".txt")):
-                    zf.write(os.path.join(root, f), arcname=os.path.relpath(os.path.join(root, f), args.save_dir))
+                if f.endswith((".png", ".json", ".txt")):
+                    zf.write(os.path.join(root, f), arcname=f)
     print(f"Results saved to {zip_path}")
+
 
 # ======================
 # ENTRY
