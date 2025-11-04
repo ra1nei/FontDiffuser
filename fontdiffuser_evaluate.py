@@ -1,142 +1,83 @@
 import os
-import random
+from torch.utils.data import DataLoader
+from evaluator.evaluator import Evaluator
+from evaluator.fid import FID
 import torch
+import torchvision.transforms as transforms
 from PIL import Image
-from datetime import datetime
-from torchvision import transforms
-
-from sample import load_fontdiffuer_pipeline
 
 
-# ======================
-# UTILS
-# ======================
-def preprocess_image(path, size, device="cuda"):
-    tfm = transforms.Compose([
-        transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-        transforms.ToTensor(),
-        transforms.Normalize([0.5], [0.5]),
-    ])
-    img = Image.open(path).convert("RGB")
-    return tfm(img)[None, :].to(device)
+# -----------------------
+# Dataset khớp với cấu trúc mới
+# -----------------------
+class SimpleResultDataset(torch.utils.data.Dataset):
+    def __init__(self, result_dir, image_size=(96, 96)):
+        self.result_dir = result_dir
+        self.image_size = image_size
+
+        # gom cặp generated/gt theo prefix (phần trước _generated_images)
+        self.pairs = []
+        all_files = os.listdir(result_dir)
+        generated = [f for f in all_files if f.endswith("_generated_images.png")]
+
+        for gen in generated:
+            prefix = gen.replace("_generated_images.png", "")
+            gt = prefix + "_gt_images.png"
+            gt_path = os.path.join(result_dir, gt)
+            gen_path = os.path.join(result_dir, gen)
+            if os.path.exists(gt_path):
+                self.pairs.append((gt_path, gen_path, prefix))
+
+        self.transform = transforms.Compose([
+            transforms.Resize(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5,), std=(0.5,))
+        ])
+
+    def __len__(self):
+        return len(self.pairs)
+
+    def __getitem__(self, idx):
+        gt_path, gen_path, key = self.pairs[idx]
+        gt = self.transform(Image.open(gt_path).convert("L"))
+        gen = self.transform(Image.open(gen_path).convert("L"))
+        return (gt.unsqueeze(0), gen.unsqueeze(0), key)
 
 
-def collect_images(root_dir):
-    """Thu thập toàn bộ ảnh .png, .jpg, .jpeg trong thư mục"""
-    return [
-        os.path.join(root, f)
-        for root, _, files in os.walk(root_dir)
-        for f in files if f.lower().endswith((".png", ".jpg", ".jpeg"))
-    ] if os.path.exists(root_dir) else []
+# -----------------------
+# Run evaluation
+# -----------------------
+def evaluate(result_dir, evaluate_mode="style", gpu_ids=[0]):
+    # Fake opt object để tương thích Evaluator
+    class Opt:
+        def __init__(self):
+            self.evaluate_mode = evaluate_mode
+            self.results_dir = os.path.dirname(result_dir)
+            self.name = os.path.basename(result_dir)
+            self.phase = "test"
+            self.epoch = "latest"
+            self.gpu_ids = gpu_ids
 
+    opt = Opt()
+    dataset = SimpleResultDataset(result_dir)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-def save_single_image(save_dir, image, filename):
-    """Lưu ảnh PIL vào thư mục"""
-    os.makedirs(save_dir, exist_ok=True)
-    image.save(os.path.join(save_dir, filename))
+    # khởi tạo Evaluator (không cần classifier)
+    evaluator = Evaluator(opt, num_classes=1, text2label={})
 
+    for data in dataloader:
+        evaluator.evaluate(data)
+        evaluator.record_current_results()
 
-def load_image_tensor(path, size=(96, 96)):
-    """Đọc ảnh groundtruth để resize và lưu lại"""
-    img = Image.open(path).convert("RGB").resize(size)
-    return img
-
-
-# ======================
-# MAIN SAMPLING
-# ======================
-def batch_sampling(args):
-    pipe = load_fontdiffuer_pipeline(args)
-    os.makedirs(args.save_dir, exist_ok=True)
-    random.seed(123)
-
-    chinese_images = collect_images(args.chinese_dir)
-    print(f"Tổng số ảnh Chinese: {len(chinese_images)}")
-
-    samples = []
-    for chi_path in chinese_images:
-        font_name = os.path.basename(os.path.dirname(chi_path))
-        glyph_name = os.path.splitext(os.path.basename(chi_path))[0]
-
-        content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
-        style_path = os.path.join(args.english_dir, font_name, "A+.png")
-
-        if not (os.path.exists(content_path) and os.path.exists(style_path)):
-            continue
-
-        samples.append({
-            "content": content_path,
-            "style": style_path,
-            "target": chi_path,
-            "font": font_name,
-            "glyph": glyph_name
-        })
-
-    print(f"Tổng số mẫu hợp lệ: {len(samples)}")
-
-    for s in samples:
-        font_name, glyph_name = s["font"], s["glyph"]
-        content_path, style_path, target_path = s["content"], s["style"], s["target"]
-
-        content_img = preprocess_image(content_path, args.content_image_size, args.device)
-        style_img = preprocess_image(style_path, args.style_image_size, args.device)
-
-        with torch.no_grad():
-            out_imgs = pipe.generate(
-                content_images=content_img,
-                style_images=style_img,
-                batch_size=1,
-                order=args.order,
-                num_inference_step=args.num_inference_steps,
-                content_encoder_downsample_size=args.content_encoder_downsample_size,
-                t_start=args.t_start,
-                t_end=args.t_end,
-                dm_size=args.content_image_size[0],
-                algorithm_type=args.algorithm_type,
-                skip_type=args.skip_type,
-                method=args.method,
-                correcting_x0_fn=args.correcting_x0_fn,
-            )
-
-        out_img = out_imgs[0]
-        out_pil = Image.fromarray(
-            ((out_img / 2 + 0.5).clamp(0, 1)
-             .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-        ) if isinstance(out_img, torch.Tensor) else out_img
-
-        # Tên file như yêu cầu
-        gen_filename = f"{font_name}_{glyph_name}_generated_images.png"
-        gt_filename = f"{font_name}_{glyph_name}_gt_images.png"
-
-        # Lưu ảnh generated và groundtruth
-        save_single_image(args.save_dir, out_pil, gen_filename)
-        target_pil = load_image_tensor(target_path, args.content_image_size)
-        save_single_image(args.save_dir, target_pil, gt_filename)
-
-    print(f"\n✅ Hoàn tất inference, ảnh lưu trong: {args.save_dir}")
-
-
-# ======================
-# ENTRY
-# ======================
-def main():
-    from configs.fontdiffuser import get_parser
-    parser = get_parser()
-    parser.add_argument("--ckpt_dir", type=str, required=True)
-    parser.add_argument("--source_dir", type=str, required=True)
-    parser.add_argument("--english_dir", type=str, required=True)
-    parser.add_argument("--chinese_dir", type=str, required=True)
-    parser.add_argument("--save_dir", type=str, default="results")
-    parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--name", type=str)
-    args = parser.parse_args()
-
-    args.save_dir = os.path.join(args.save_dir, f"{args.name}_all_{datetime.now():%H-%M-%S_%d-%m}")
-    os.makedirs(args.save_dir, exist_ok=True)
-    args.style_image_size = args.content_image_size = (96, 96)
-
-    batch_sampling(args)
+    evaluator.compute_final_results()
 
 
 if __name__ == "__main__":
-    main()
+    from configs.fontdiffuser import get_parser
+    parser = get_parser()
+    parser.add_argument("--name", type=str)
+    parser.add_argument("--model", type=str)
+    args = parser.parse_args()
+
+    result_folder = f"results/{args.model}-{args.name}"
+    evaluate(result_folder)
