@@ -71,8 +71,11 @@ for gen_path, gt_path in tqdm(pairs, desc="Evaluating"):
     lpips_scores.append(lp)
 
     # FID (1 batch = 1 cặp gen/gt)
-    fid_metric.update(gen, real=False)
-    fid_metric.update(gt, real=True)
+    gen_uint8 = (gen * 255).clamp(0, 255).to(torch.uint8)
+    gt_uint8 = (gt * 255).clamp(0, 255).to(torch.uint8)
+    fid_metric.update(gen_uint8, real=False)
+    fid_metric.update(gt_uint8, real=True)
+
 
 fid_value = fid_metric.compute().item()
 
