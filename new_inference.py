@@ -32,7 +32,7 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
 
     # Setup models
     lpips_model = lpips.LPIPS(net='vgg').to(device)
-    fid_metric = FrechetInceptionDistance(feature=64).to(device)
+    fid_metric = FrechetInceptionDistance(feature=2048).to(device)
 
     results = []
 
