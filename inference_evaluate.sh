@@ -6,7 +6,7 @@ name="SFUC"
 
 ### P1 Same
 model="p1_same"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-same \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -20,7 +20,7 @@ python fontdiffuser_evaluate.py \
 
 ### P1 Cross
 model="p1_cross"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-cross \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -33,7 +33,7 @@ python fontdiffuser_evaluate.py \
 
 ### P2 Same Both
 model="p2_same_both"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-same-both \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -47,7 +47,7 @@ python fontdiffuser_evaluate.py \
 
 ### P1 Cross
 model="p2_cross_both"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-cross-both \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -77,7 +77,7 @@ name="UFSC"
 
 ### P1 Same
 model="p1_same"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-same \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -91,7 +91,7 @@ python fontdiffuser_evaluate.py \
 
 ### P1 Cross
 model="p1_cross"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p1-cross \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -104,7 +104,7 @@ python fontdiffuser_evaluate.py \
 
 ### P2 Same Both
 model="p2_same_both"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-same-both \
   --source_dir $source_dir \
   --english_dir $english_dir \
@@ -118,7 +118,7 @@ python fontdiffuser_evaluate.py \
 
 ### P1 Cross
 model="p2_cross_both"
-!git pull && python fontdiffuser_inference.py \
+git pull && python fontdiffuser_inference.py \
   --ckpt_dir /datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt/p2-cross-both \
   --source_dir $source_dir \
   --english_dir $english_dir \
