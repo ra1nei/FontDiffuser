@@ -8,28 +8,37 @@ from torchvision import transforms
 from skimage.metrics import structural_similarity as ssim
 from torchmetrics.image.fid import FrechetInceptionDistance
 
+
 # --- Utility functions ---
 def load_image(path):
     img = Image.open(path).convert("RGB")
     return transforms.ToTensor()(img).unsqueeze(0)  # (1, 3, H, W)
 
+
 def l1_loss(img1, img2):
     return torch.mean(torch.abs(img1 - img2)).item()
 
+
 def ssim_score(img1, img2):
-    img1 = img1.squeeze().permute(1,2,0).numpy()
-    img2 = img2.squeeze().permute(1,2,0).numpy()
+    img1 = img1.squeeze().permute(1, 2, 0).numpy()
+    img2 = img2.squeeze().permute(1, 2, 0).numpy()
     return ssim(img1, img2, channel_axis=2, data_range=1.0)
+
 
 # --- Main evaluation ---
 def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.is_available() else 'cpu'):
     files = os.listdir(folder_path)
     generated_files = [f for f in files if "_generated_images" in f]
 
+    # Setup models
     lpips_model = lpips.LPIPS(net='vgg').to(device)
     fid_metric = FrechetInceptionDistance(feature=64).to(device)
 
     results = []
+
+    # Prepare lists for FID
+    gen_imgs = []
+    gt_imgs = []
 
     for gen_file in tqdm(generated_files, desc="Evaluating"):
         base_name = gen_file.replace("_generated_images.png", "")
@@ -44,14 +53,22 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
         gen_img = load_image(gen_path).to(device)
         gt_img = load_image(gt_path).to(device)
 
+        # Store for FID later
+        gen_imgs.append(gen_img)
+        gt_imgs.append(gt_img)
+
+        # --- Per-image metrics ---
         l1_val = l1_loss(gen_img, gt_img)
         ssim_val = ssim_score(gen_img.cpu(), gt_img.cpu())
         lpips_val = lpips_model(gen_img, gt_img).item()
 
-        fid_metric.update((gen_img * 255).byte(), real=False)
-        fid_metric.update((gt_img * 255).byte(), real=True)
-
         results.append((base_name, l1_val, ssim_val, lpips_val))
+
+    # --- Compute FID (global) ---
+    for img in gen_imgs:
+        fid_metric.update((img * 255).byte(), real=False)
+    for img in gt_imgs:
+        fid_metric.update((img * 255).byte(), real=True)
 
     fid_val = fid_metric.compute().item()
 
@@ -65,9 +82,15 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
         f.write("Filename\tL1\tSSIM\tLPIPS\tFID\n")
         for name, l1_val, ssim_val, lpips_val in results:
             f.write(f"{name}\t{l1_val:.6f}\t{ssim_val:.6f}\t{lpips_val:.6f}\t{fid_val:.6f}\n")
-        f.write(f"\nAverage L1: {np.mean([r[1] for r in results]):.6f}\n")
-        f.write(f"Average SSIM: {np.mean([r[2] for r in results]):.6f}\n")
-        f.write(f"Average LPIPS: {np.mean([r[3] for r in results]):.6f}\n")
+
+        # Averages
+        avg_l1 = np.mean([r[1] for r in results])
+        avg_ssim = np.mean([r[2] for r in results])
+        avg_lpips = np.mean([r[3] for r in results])
+
+        f.write(f"\nAverage L1: {avg_l1:.6f}\n")
+        f.write(f"Average SSIM: {avg_ssim:.6f}\n")
+        f.write(f"Average LPIPS: {avg_lpips:.6f}\n")
         f.write(f"FID (global): {fid_val:.6f}\n")
 
     print(f"\n✅ Done! Results saved to {output_path}")
