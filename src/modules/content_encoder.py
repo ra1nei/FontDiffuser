@@ -371,7 +371,7 @@ class ContentEncoder(ModelMixin, ConfigMixin):
         self.SN_eps = SN_eps
         self.fp16 = G_fp16
 
-        if self.resolution == 96:
+        if self.resolution == 64:
             self.save_features = [0,1,2,3,4]
         elif self.resolution == 80:
             self.save_features = [0,1,2,3,4]

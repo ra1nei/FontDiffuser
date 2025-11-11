@@ -351,7 +351,7 @@ class StyleEncoder(ModelMixin, ConfigMixin):
         self.SN_eps = SN_eps
         self.fp16 = G_fp16
 
-        if self.resolution == 96:
+        if self.resolution == 64:
             self.save_featrues = [0,1,2,3,4]
         if self.resolution == 128:
             self.save_featrues = [0,1,2,3,4]
