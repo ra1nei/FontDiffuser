@@ -21,7 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_root", type=str, required=True)
     parser.add_argument("--phase", type=str, default="train")
-    parser.add_argument("--resolution", type=int, default=96)
+    parser.add_argument("--resolution", type=int, default=64)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=10)
