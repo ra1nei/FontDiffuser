@@ -336,7 +336,7 @@ def content_encoder_arch(ch =64,out_channel_multiplier = 1, input_nc = 3):
     arch[80] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
                                 'out_channels' : [item * ch for item in [1,2,4]],
                                 'resolution': [40,20,10]}
-    arch[96] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
+    arch[64] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
                                 'out_channels' : [item * ch for item in [1,2,4]],
                                 'resolution': [48,24,12]}
                                 
