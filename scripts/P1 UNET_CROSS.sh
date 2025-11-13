@@ -1,4 +1,4 @@
-git pull && python train.py \
+git pull && accelerate launch --num_processes=2 train.py \
     --seed=123 \
     --data_root="./thesis-data-png" \
     --report_to="wandb" \
