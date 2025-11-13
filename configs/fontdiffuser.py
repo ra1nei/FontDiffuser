@@ -12,10 +12,10 @@ def get_parser():
     parser.add_argument("--logging_dir", type=str, default="logs")
 
     # Model
-    parser.add_argument("--resolution", type=int, default=96)
+    parser.add_argument("--resolution", type=int, default=64)
     parser.add_argument("--unet_channels", type=tuple, default=(64, 128, 256, 512))
-    parser.add_argument("--style_image_size", type=int, default=96)
-    parser.add_argument("--content_image_size", type=int, default=96)
+    parser.add_argument("--style_image_size", type=int, default=64)
+    parser.add_argument("--content_image_size", type=int, default=64)
     parser.add_argument("--content_encoder_downsample_size", type=int, default=3)
     parser.add_argument("--channel_attn", type=bool, default=True)
     parser.add_argument("--content_start_channel", type=int, default=64)
@@ -31,7 +31,7 @@ def get_parser():
     ## SCR
     parser.add_argument("--temperature", type=float, default=0.07)
     parser.add_argument("--mode", type=str, default="refinement")
-    parser.add_argument("--scr_image_size", type=int, default=96)
+    parser.add_argument("--scr_image_size", type=int, default=64)
     parser.add_argument("--scr_ckpt_path", type=str, default=None)
     parser.add_argument("--num_neg", type=int, default=16, help="Number of negative samples.")
     parser.add_argument("--nce_layers", type=str, default='0,1,2,3')
