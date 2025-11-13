@@ -23,4 +23,5 @@ git pull && python train.py \
     --mixed_precision="no" \
     --lang_mode="cross" \
     --experience_name="P1-CROSS-64" \
-    --output_dir="outputs/p1_cross_64"
+    --output_dir="outputs/p1_cross_64" \
+    --resume_ckpt="/datastore/cndt_hangdv/TDKD/FontDiffuser/outputs/p1_cross_64/global_step_200000"
