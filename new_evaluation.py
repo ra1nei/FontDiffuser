@@ -12,7 +12,10 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 # --- Utility functions ---
 def load_image(path):
     img = Image.open(path).convert("RGB")
-    return transforms.ToTensor()(img).unsqueeze(0)  # (1, 3, H, W)
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    return transform(img).unsqueeze(0)
 
 
 def l1_loss(img1, img2):
@@ -35,8 +38,6 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
     fid_metric = FrechetInceptionDistance(feature=2048).to(device)
 
     results = []
-
-    # Prepare lists for FID
     gen_imgs = []
     gt_imgs = []
 
