@@ -1,4 +1,4 @@
-git pull && python train.py \
+git pull && accelerate launch --num_processes=2 train.py \
     --seed=123 \
     --data_root="./thesis-data-png" \
     --report_to="wandb" \
@@ -9,7 +9,7 @@ git pull && python train.py \
     --channel_attn=True \
     --content_start_channel=64 \
     --style_start_channel=64 \
-    --train_batch_size=16 \
+    --train_batch_size=8 \
     --perceptual_coefficient=0.01 \
     --offset_coefficient=0.5 \
     --max_train_steps=440000 \
