@@ -36,7 +36,7 @@ def save_single_image(save_dir, image, filename):
     image.save(os.path.join(save_dir, filename))
 
 
-def load_image_tensor(path, size=(96, 96)):
+def load_image_tensor(path, size=(64, 64)):
     """Đọc ảnh groundtruth để resize và lưu lại"""
     img = Image.open(path).convert("RGB").resize(size)
     return img
@@ -134,7 +134,7 @@ def main():
 
     args.save_dir = os.path.join(args.save_dir, f"{args.model}-{args.name}")
     os.makedirs(args.save_dir, exist_ok=True)
-    args.style_image_size = args.content_image_size = (96, 96)
+    args.style_image_size = args.content_image_size = (64, 64)
 
     batch_sampling(args)
 
