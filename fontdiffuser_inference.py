@@ -126,7 +126,7 @@ def main():
     parser.add_argument("--source_dir", type=str, required=True)
     parser.add_argument("--english_dir", type=str, required=True)
     parser.add_argument("--chinese_dir", type=str, required=True)
-    parser.add_argument("--save_dir", type=str, default="results")
+    parser.add_argument("--save_dir", type=str, default="/kaggle/working/results/")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--name", type=str)
     parser.add_argument("--model", type=str)
