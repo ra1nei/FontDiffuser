@@ -23,4 +23,5 @@ git pull && accelerate launch --num_processes=2 train.py \
     --mixed_precision="no" \
     --lang_mode="same" \
     --experience_name="P1-SAME-64" \
-    --output_dir="outputs/p1_same_64"
+    --output_dir="outputs/p1_same_64" \
+    --resume_ckpt="/datastore/cndt_hangdv/TDKD/FontDiffuser/outputs/p1_same_64/global_step_280000"
