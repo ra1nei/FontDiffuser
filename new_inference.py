@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 from datetime import datetime
 from torchvision import transforms
-
+import numpy as np
 from sample import load_fontdiffuer_pipeline
 
 
@@ -36,9 +36,10 @@ def save_single_image(save_dir, image, filename):
     image.save(os.path.join(save_dir, filename))
 
 
-def load_image_tensor(path, size=(64, 64)):
-    """Đọc ảnh groundtruth để resize và lưu lại"""
-    img = Image.open(path).convert("RGB").resize(size)
+def load_image_tensor(path, size=None):
+    img = Image.open(path).convert("RGB")
+    if size is not None:
+        img = img.resize(size)
     return img
 
 
@@ -99,10 +100,17 @@ def batch_sampling(args):
             )
 
         out_img = out_imgs[0]
-        out_pil = Image.fromarray(
-            ((out_img / 2 + 0.5).clamp(0, 1)
-             .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-        ) if isinstance(out_img, torch.Tensor) else out_img
+        if isinstance(out_img, torch.Tensor):
+            out_pil = Image.fromarray(
+                ((out_img / 2 + 0.5).clamp(0, 1)
+                .permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+            )
+        else:
+            out_pil = out_img
+
+        # ensure correct resolution
+        out_pil = out_pil.resize(args.content_image_size)
+
 
         # Tên file như yêu cầu
         gen_filename = f"{font_name}|{glyph_name}|generated_images.png"
@@ -134,7 +142,9 @@ def main():
 
     args.save_dir = os.path.join(args.save_dir, f"{args.model}-{args.name}")
     os.makedirs(args.save_dir, exist_ok=True)
-    args.style_image_size = args.content_image_size = (64, 64)
+    test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
+    args.content_image_size = args.style_image_size = test_img.size
+    print(f"⛏ Auto-detected image size:", args.content_image_size)
 
     batch_sampling(args)
 
