@@ -140,7 +140,6 @@ def main():
     parser.add_argument("--model", type=str)
     args = parser.parse_args()
 
-    args.save_dir = os.path.join(args.save_dir, f"{args.model}-{args.name}")
     os.makedirs(args.save_dir, exist_ok=True)
     test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
     args.content_image_size = args.style_image_size = test_img.size
