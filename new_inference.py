@@ -137,7 +137,7 @@ def batch_sampling(args):
             style_file = "A+.png"
 
         style_path = os.path.join(args.english_dir, font_name, style_file)
-
+        print(content_path, style_path)
 
         if not (os.path.exists(content_path) and os.path.exists(style_path)):
             continue
