@@ -7,6 +7,7 @@ from torchvision import transforms
 import numpy as np
 from sample import load_fontdiffuer_pipeline
 from utils import save_image_with_content_style   # dùng lại utils
+from tqdm import tqdm
 # Nếu bạn muốn override hàm utils, bỏ comment dòng dưới và xóa import ở trên
 # (nhưng theo yêu cầu thì giữ nguyên import)
 
@@ -151,7 +152,7 @@ def batch_sampling(args):
 
     print(f"Tổng số mẫu hợp lệ: {len(samples)}")
 
-    for s in samples:
+    for s in tqdm(samples, desc="🔄 Running inference", ncols=100):
         font_name, glyph_name = s["font"], s["glyph"]
         content_path, style_path, target_path = s["content"], s["style"], s["target"]
 
