@@ -6,6 +6,9 @@ from datetime import datetime
 from torchvision import transforms
 import numpy as np
 from sample import load_fontdiffuer_pipeline
+from utils import save_image_with_content_style   # dùng lại utils
+# Nếu bạn muốn override hàm utils, bỏ comment dòng dưới và xóa import ở trên
+# (nhưng theo yêu cầu thì giữ nguyên import)
 
 
 # ======================
@@ -41,6 +44,65 @@ def load_image_tensor(path, size=None):
     if size is not None:
         img = img.resize(size)
     return img
+
+
+
+# ======================
+# NEW FUNCTION (FULL)
+# ======================
+def save_image_with_content_style(
+    save_dir,
+    gen_image_pil,
+    content_image_pil=None,
+    content_image_path=None,
+    style_image_path=None,
+    resolution=(128, 128),
+    filename="out_with_cs.jpg"
+):
+    """
+    Tạo ảnh ghép: [content | style | generated]
+
+    Args:
+        save_dir (str): thư mục lưu
+        gen_image_pil (PIL.Image): ảnh generated
+        content_image_pil (PIL.Image or None): ảnh content PIL nếu có
+        content_image_path (str or None): đường dẫn ảnh content
+        style_image_path (str): đường dẫn ảnh style
+        resolution (tuple): (W, H)
+        filename (str): tên file ảnh
+
+    Returns:
+        save_path (str): đường dẫn ảnh đã lưu
+    """
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    W, H = resolution
+
+    # ----- load content -----
+    if content_image_pil is not None:
+        content = content_image_pil.resize((W, H))
+    else:
+        content = Image.open(content_image_path).convert("RGB").resize((W, H))
+
+    # ----- load style -----
+    style = Image.open(style_image_path).convert("RGB").resize((W, H))
+
+    # ----- generated -----
+    gen = gen_image_pil.resize((W, H))
+
+    # ----- create merged canvas -----
+    merged = Image.new("RGB", (W * 3, H))
+    merged.paste(content, (0, 0))
+    merged.paste(style, (W, 0))
+    merged.paste(gen, (W * 2, 0))
+
+    save_path = os.path.join(save_dir, filename)
+    merged.save(save_path)
+
+    return save_path
+
+
 
 
 # ======================
@@ -111,7 +173,6 @@ def batch_sampling(args):
         # ensure correct resolution
         out_pil = out_pil.resize(args.content_image_size)
 
-
         # Tên file như yêu cầu
         gen_filename = f"{font_name}|{glyph_name}|generated_images.png"
         gt_filename = f"{font_name}|{glyph_name}|gt_images.png"
@@ -121,7 +182,21 @@ def batch_sampling(args):
         target_pil = load_image_tensor(target_path, args.content_image_size)
         save_single_image(args.save_dir, target_pil, gt_filename)
 
+        # ================================
+        # Lưu ảnh ghép content-style-gen
+        # ================================
+        merged_filename = f"{font_name}|{glyph_name}|merged.png"
+        save_image_with_content_style(
+            save_dir=args.save_dir,
+            gen_image_pil=out_pil,
+            content_image_path=content_path,
+            style_image_path=style_path,
+            resolution=args.content_image_size,
+            filename=merged_filename
+        )
+
     print(f"\n✅ Hoàn tất inference, ảnh lưu trong: {args.save_dir}")
+
 
 
 # ======================
