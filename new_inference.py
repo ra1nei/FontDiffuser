@@ -138,7 +138,6 @@ def batch_sampling(args):
             style_file = "a.png"
 
         style_path = os.path.join(style_dir, style_file)
-        print(content_path, style_path)
 
         if not (os.path.exists(content_path) and os.path.exists(style_path)):
             continue
