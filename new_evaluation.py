@@ -42,8 +42,8 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
     gt_imgs = []
 
     for gen_file in tqdm(generated_files, desc="Evaluating"):
-        base_name = gen_file.replace("_generated_images.png", "")
-        gt_file = base_name + "_gt_images.png"
+        base_name = gen_file.replace("|generated_images.png", "")
+        gt_file = base_name + "|gt_images.png"
 
         gen_path = os.path.join(folder_path, gen_file)
         gt_path = os.path.join(folder_path, gt_file)
