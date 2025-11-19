@@ -31,7 +31,7 @@ def ssim_score(img1, img2):
 # --- Main evaluation ---
 def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.is_available() else 'cpu'):
     files = os.listdir(folder_path)
-    generated_files = [f for f in files if "_generated_images" in f]
+    generated_files = [f for f in files if "|generated_images" in f]
 
     # Setup models
     lpips_model = lpips.LPIPS(net='vgg').to(device)
