@@ -134,7 +134,7 @@ def batch_sampling(args):
                 style_file = f"{rand_char}.png"
 
         else:
-            style_file = "A+.png"
+            style_file = "a.png"
 
         style_path = os.path.join(args.english_dir, font_name, style_file)
         print(content_path, style_path)
