@@ -71,6 +71,7 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
     for img in gt_imgs:
         fid_metric.update((img * 255).byte(), real=True)
 
+    print("Gen:", len(gen_imgs), "GT:", len(gt_imgs))
     fid_val = fid_metric.compute().item()
 
     # --- Save results ---
