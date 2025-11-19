@@ -1,9 +1,9 @@
 accelerate launch --num_processes=1 train.py \
     --seed=123 \
-    --data_root="./thesis-data-png" \
+    --data_root="/datastore/cndt_hangdv/TDKD/FontDiffuser/image_dataset/FontDiffuser" \
     --report_to="wandb" \
     --phase_2 \
-    --scr_ckpt_path="./scr_both_ckpt/scr_225000.pth" \
+    --scr_ckpt_path="./scr64_both_200000.pth" \
     --sc_coefficient=0.01 \
     --num_neg=16 \
     --resolution=64 \
@@ -29,6 +29,6 @@ accelerate launch --num_processes=1 train.py \
     --scr_mode="both" \
     --alpha_intra=0.3 \
     --beta_cross=0.7 \
-    --experience_name="P2-UNET-SAME-BOTH" \
-    --output_dir="./p2_unet_same_both" \
-    --phase_1_ckpt_dir="./p1_unet_same"
+    --experience_name="P2-SAME-BOTH-64" \
+    --output_dir="outputs/p2_same_both_64" \
+    --phase_1_ckpt_dir="/datastore/cndt_hangdv/TDKD/FontDiffuser/checkpoint/p1_same_64"
