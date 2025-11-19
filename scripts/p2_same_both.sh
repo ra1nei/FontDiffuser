@@ -31,4 +31,4 @@ accelerate launch --num_processes=1 train.py \
     --beta_cross=0.7 \
     --experience_name="P2-SAME-BOTH-64" \
     --output_dir="outputs/p2_same_both_64" \
-    --phase_1_ckpt_dir="/datastore/cndt_hangdv/TDKD/FontDiffuser/checkpoint/p1_same_64"
+    --phase_1_ckpt_dir="/datastore/cndt_hangdv/TDKD/FontDiffuser/checkpoint/p1_same_64/global_step_440000"
