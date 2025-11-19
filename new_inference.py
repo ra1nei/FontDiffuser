@@ -125,18 +125,19 @@ def batch_sampling(args):
         # CONTENT
         content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
         # STYLE
-        if args.random_style:
-            rand_char = random.choice(string.ascii_letters)  # includes a-z + A-Z
+        style_dir = os.path.join(args.english_dir, font_name)
 
-            if rand_char.isupper():
-                style_file = f"{rand_char}+.png"
-            else:
-                style_file = f"{rand_char}.png"
+        if args.random_style:
+            style_candidates = [
+                f for f in os.listdir(style_dir)
+                if f.lower().endswith((".png", ".jpg", ".jpeg"))
+            ]
+            style_file = random.choice(style_candidates)
 
         else:
             style_file = "a.png"
 
-        style_path = os.path.join(args.english_dir, font_name, style_file)
+        style_path = os.path.join(style_dir, style_file)
         print(content_path, style_path)
 
         if not (os.path.exists(content_path) and os.path.exists(style_path)):
