@@ -1,5 +1,5 @@
 import os
-import random
+import random, string
 import torch
 from PIL import Image
 from datetime import datetime
@@ -121,8 +121,22 @@ def batch_sampling(args):
         font_name = os.path.basename(os.path.dirname(chi_path))
         glyph_name = os.path.splitext(os.path.basename(chi_path))[0]
 
+        # CONTENT
         content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
-        style_path = os.path.join(args.english_dir, font_name, "A+.png")
+        # STYLE
+        if args.random_style:
+            rand_char = random.choice(string.ascii_letters)  # includes a-z + A-Z
+
+            if rand_char.isupper():
+                style_file = f"{rand_char}+.png"
+            else:
+                style_file = f"{rand_char}.png"
+
+        else:
+            style_file = "A+.png"
+
+        style_path = os.path.join(args.english_dir, font_name, style_file)
+
 
         if not (os.path.exists(content_path) and os.path.exists(style_path)):
             continue
@@ -213,6 +227,9 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--name", type=str)
     parser.add_argument("--model", type=str)
+    parser.add_argument("--random_style", action="store_true",
+                    help="Nếu bật thì chọn style random từ a-z (viết thường), và dùng file Upper+.png")
+
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
