@@ -1,6 +1,6 @@
 git pull && accelerate launch --num_processes=2 train.py \
     --seed=123 \
-    --data_root="./thesis-data-png" \
+    --data_root="/datastore/cndt_hangdv/TDKD/FontDiffuser/image_dataset/FontDiffuser" \
     --report_to="wandb" \
     --resolution=64 \
     --style_image_size=64 \
@@ -22,6 +22,6 @@ git pull && accelerate launch --num_processes=2 train.py \
     --drop_prob=0.1 \
     --mixed_precision="no" \
     --lang_mode="cross" \
-    --experience_name="P1-CROSS-64" \
-    --output_dir="outputs/p1_cross_64" \
+    --experience_name="P1-CROSS-64-NOSCALE" \
+    --output_dir="outputs/p1_cross_64_noscale" \
     --rsi_mode "rsi_no_scale"
