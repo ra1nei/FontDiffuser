@@ -421,6 +421,7 @@ class DownBlock2D(nn.Module):
 
 
 class StyleRSIUpBlock2D(nn.Module):
+    ALLOW_DEFORMATION = True
     def __init__(
         self,
         in_channels: int,
@@ -558,7 +559,9 @@ class StyleRSIUpBlock2D(nn.Module):
             total_offset += offset_sum
 
             ### DEBUG: RSI without changing the glyph size in the hope of preventing the metrics not getting fucked up
-            offset = torch.zeros_like(offset)
+            if not self.ALLOW_DEFORMATION:
+                # Nếu cấm biến dạng -> ép offset về 0
+                offset = torch.zeros_like(offset)
 
             res_hidden_states = res_hidden_states.contiguous()
             res_hidden_states = dcn_deform(res_hidden_states, offset)

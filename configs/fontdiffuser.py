@@ -96,4 +96,8 @@ def get_parser():
     parser.add_argument("--resume_strict", action="store_true",
                         help="Strict mode khi load checkpoint (mặc định bỏ qua mismatch layer).")
 
+    # RSI parser --hopefully it won't fuck up
+    parser.add_argument("--rsi_mode", type=str, default="rsi_original",
+                        choices=["no_rsi", "rsi_no_scale", "rsi_original"],
+                        help="Chọn chế độ RSI: 'no_rsi' (bỏ hẳn), 'rsi_no_scale' (giữ block nhưng không méo), 'rsi_original' (mặc định)")
     return parser

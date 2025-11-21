@@ -27,6 +27,7 @@ from utils import (save_args_to_yaml,
                    x0_from_epsilon, 
                    reNormalize_img, 
                    normalize_mean_std)
+from src.modules.unet_blocks import StyleRSIUpBlock2D
 
 logger = get_logger(__name__)
 
@@ -73,6 +74,19 @@ def load_checkpoint(load_dir, model, optimizer=None, lr_scheduler=None):
 
 def main():
     args = get_args()
+
+    # === THÊM ĐOẠN XỬ LÝ LOGIC NÀY ===
+    if args.rsi_mode == "rsi_no_scale":
+        # Tắt tính năng biến dạng trên toàn bộ Class
+        StyleRSIUpBlock2D.ALLOW_DEFORMATION = False
+        print("[Training Setup] RSI Mode: NO SCALE (Deformation Disabled)")
+    elif args.rsi_mode == "rsi_original":
+        # Bật tính năng biến dạng
+        StyleRSIUpBlock2D.ALLOW_DEFORMATION = True
+        print("[Training Setup] RSI Mode: ORIGINAL (Deformation Enabled)")
+    elif args.rsi_mode == "no_rsi":
+        print("[Training Setup] RSI Mode: NO RSI (Standard UNet Architecture)")
+    # =================================
 
     logging_dir = f"{args.output_dir}/{args.logging_dir}"
 

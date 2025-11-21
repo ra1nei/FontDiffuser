@@ -5,6 +5,14 @@ from src import (ContentEncoder,
                  SCR)
 
 def build_unet(args):
+    if args.rsi_mode == "no_rsi":
+        # Trường hợp 1: Không dùng RSI -> Tất cả là UpBlock2D thường
+        up_blocks = ('UpBlock2D', 'UpBlock2D', 'UpBlock2D', 'UpBlock2D')
+        print(f"[Model Config] Mode: {args.rsi_mode} -> Disabled RSI Block.")
+    else:
+        # Trường hợp 2 & 3: Dùng RSI (Original hoặc No Scale)
+        up_blocks = ('UpBlock2D', 'StyleRSIUpBlock2D', 'StyleRSIUpBlock2D', 'UpBlock2D')
+        print(f"[Model Config] Mode: {args.rsi_mode} -> Enabled RSI Block structure.")
     unet = UNet(
         sample_size=args.resolution,
         in_channels=3,
@@ -15,10 +23,7 @@ def build_unet(args):
                           'MCADownBlock2D',
                           'MCADownBlock2D', 
                           'DownBlock2D'),
-        up_block_types=('UpBlock2D', 
-                        'StyleRSIUpBlock2D',
-                        'StyleRSIUpBlock2D', 
-                        'UpBlock2D'),
+        up_block_types=up_blocks,
         block_out_channels=args.unet_channels, 
         layers_per_block=2,
         downsample_padding=1,
