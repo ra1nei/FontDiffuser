@@ -23,5 +23,5 @@ git pull && accelerate launch --num_processes=2 train.py \
     --mixed_precision="no" \
     --lang_mode="same" \
     --experience_name="P1-SAME-64-NOSCALE" \
-    --output_dir="outputs/p1_same_64_noscale" \
+    --output_dir="/datastore/cndt_hangdv/TDKD/FontDiffuser/checkpoints/p1_same_64_noscale" \
     --rsi_mode "rsi_no_scale"
