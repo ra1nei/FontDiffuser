@@ -557,6 +557,9 @@ class StyleRSIUpBlock2D(nn.Module):
             offset_sum = torch.mean(torch.abs(offset))
             total_offset += offset_sum
 
+            ### DEBUG: RSI without changing the glyph size in the hope of preventing the metrics not getting fucked up
+            offset = torch.zeros_like(offset)
+
             res_hidden_states = res_hidden_states.contiguous()
             res_hidden_states = dcn_deform(res_hidden_states, offset)
             # concat as input
