@@ -200,15 +200,15 @@ def batch_sampling(args):
         # ================================
         # Lưu ảnh ghép content-style-gen
         # ================================
-        merged_filename = f"{font_name}|{glyph_name}|merged.png"
-        save_image_with_content_style(
-            save_dir=args.save_dir,
-            gen_image_pil=out_pil,
-            content_image_path=content_path,
-            style_image_path=style_path,
-            resolution=args.content_image_size,
-            filename=merged_filename
-        )
+        # merged_filename = f"{font_name}|{glyph_name}|merged.png"
+        # save_image_with_content_style(
+        #     save_dir=args.save_dir,
+        #     gen_image_pil=out_pil,
+        #     content_image_path=content_path,
+        #     style_image_path=style_path,
+        #     resolution=args.content_image_size,
+        #     filename=merged_filename
+        # )
 
     print(f"\n✅ Hoàn tất inference, ảnh lưu trong: {args.save_dir}")
 
