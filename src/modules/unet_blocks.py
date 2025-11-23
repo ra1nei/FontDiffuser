@@ -104,6 +104,19 @@ def get_up_block(
             attn_num_head_channels=attn_num_head_channels,
             structure_feature_begin=structure_feature_begin,
             upblock_index=upblock_index)
+    elif up_block_type == "UpBlock2D_Compatible":
+        return UpBlock2D_Compatible(
+            num_layers=num_layers,
+            in_channels=in_channels,
+            out_channels=out_channels,
+            prev_output_channel=prev_output_channel,
+            temb_channels=temb_channels,
+            add_upsample=add_upsample,
+            resnet_eps=resnet_eps,
+            resnet_act_fn=resnet_act_fn,
+            resnet_groups=resnet_groups
+            # Không cần truyền các tham số của RSI vào init vì class này không dùng
+        )
     else:
         raise ValueError(f"{up_block_type} does not exist.")
 
@@ -665,3 +678,33 @@ class UpBlock2D(nn.Module):
                 hidden_states = upsampler(hidden_states, upsample_size)
 
         return hidden_states
+    
+class UpBlock2D_Compatible(UpBlock2D):
+    """
+    Class này hoạt động y hệt UpBlock2D nhưng 'giả vờ' nhận tham số và trả về kết quả
+    giống StyleRSIUpBlock2D để code không bị crash.
+    """
+    def forward(
+        self, 
+        hidden_states, 
+        res_hidden_states_tuple, 
+        style_structure_features=None,  # Nhận nhưng không dùng (để tránh lỗi)
+        temb=None, 
+        encoder_hidden_states=None,     # Nhận nhưng không dùng
+        upsample_size=None,
+        **kwargs                        # Nhận các tham số thừa khác
+    ):
+        # 1. Gọi hàm forward của cha (UpBlock2D gốc)
+        # Chỉ truyền đúng những gì UpBlock2D cần
+        hidden_states = super().forward(
+            hidden_states=hidden_states, 
+            res_hidden_states_tuple=res_hidden_states_tuple, 
+            temb=temb, 
+            upsample_size=upsample_size
+        )
+
+        # 2. Trả về thêm số 0.0 để giả lập offset_out
+        # Code bên ngoài sẽ nhận được (ảnh, 0) -> Hợp lệ!
+        offset_out = 0.0
+        
+        return hidden_states, offset_out
