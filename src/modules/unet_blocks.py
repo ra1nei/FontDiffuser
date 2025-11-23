@@ -683,8 +683,11 @@ import torch.nn.functional as F  # Nhớ import F
 
 class UpBlock2D_Compatible(UpBlock2D):
     """
-    Wrapper cho UpBlock2D để tương thích với FontDiffuser.
-    Tự động xử lý resize và unpack tuple an toàn.
+    Wrapper class cho UpBlock2D. 
+    Giải quyết 3 vấn đề tương thích:
+    1. Giao diện (Interface): Nhận tham số thừa của RSI mà không lỗi.
+    2. Input (Tuple Unpacking): Tự động lấy Tensor nếu đầu vào là Tuple (ảnh, offset).
+    3. Kích thước (Resizing): Tự động resize skip-connection nếu size không khớp.
     """
     def forward(
         self, 
@@ -696,20 +699,21 @@ class UpBlock2D_Compatible(UpBlock2D):
         upsample_size=None,
         **kwargs
     ):
-        # [Safety Check 1] Nếu input đầu vào là tuple -> Lấy phần tử đầu tiên
+        # [QUAN TRỌNG 1] Gỡ Tuple đầu vào (Fix lỗi TypeError hiện tại)
+        # Input từ block trước có thể là (hidden_states, offset_out)
         if isinstance(hidden_states, tuple):
             hidden_states = hidden_states[0]
 
         for resnet in self.resnets:
-            # Lấy skip connection
+            # Pop res_hidden_states
             res_hidden_states = res_hidden_states_tuple[-1]
             res_hidden_states_tuple = res_hidden_states_tuple[:-1]
             
-            # [Safety Check 2] Nếu skip connection là tuple -> Lấy phần tử đầu tiên
+            # [Safety Check] Gỡ Tuple cho skip-connection (đề phòng)
             if isinstance(res_hidden_states, tuple):
                 res_hidden_states = res_hidden_states[0]
 
-            # [Auto Resize] Kiểm tra và resize nếu kích thước không khớp
+            # [QUAN TRỌNG 2] Tự động Resize (Fix lỗi shape mismatch trước đó)
             if res_hidden_states.shape[-2:] != hidden_states.shape[-2:]:
                 res_hidden_states = F.interpolate(
                     res_hidden_states, 
@@ -718,7 +722,7 @@ class UpBlock2D_Compatible(UpBlock2D):
                     align_corners=False
                 )
 
-            # Ghép nối
+            # Ghép nối (Bây giờ cả 2 đều là Tensor và cùng size -> OK)
             hidden_states = torch.cat([hidden_states, res_hidden_states], dim=1)
 
             # Chạy qua ResNet
@@ -730,8 +734,8 @@ class UpBlock2D_Compatible(UpBlock2D):
                 hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
             else:
                 hidden_states = resnet(hidden_states, temb)
-
-            # [Safety Check 3] Nếu ResNet trả về tuple -> Lấy phần tử đầu tiên
+            
+            # [Safety Check] Gỡ Tuple nếu ResNet trả về tuple
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
 
@@ -739,9 +743,9 @@ class UpBlock2D_Compatible(UpBlock2D):
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:
                 hidden_states = upsampler(hidden_states, upsample_size)
-                # [Safety Check 4] Upsampler trả về tuple
+                # [Safety Check]
                 if isinstance(hidden_states, tuple):
                     hidden_states = hidden_states[0]
 
-        # Trả về kèm offset=0.0 để khớp format (hidden_states, offset)
+        # Trả về format (tensor, offset) để tương thích với block sau
         return hidden_states, 0.0
