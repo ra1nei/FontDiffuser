@@ -679,32 +679,59 @@ class UpBlock2D(nn.Module):
 
         return hidden_states
     
+import torch.nn.functional as F  # Nhớ import F
+
 class UpBlock2D_Compatible(UpBlock2D):
     """
-    Class này hoạt động y hệt UpBlock2D nhưng 'giả vờ' nhận tham số và trả về kết quả
-    giống StyleRSIUpBlock2D để code không bị crash.
+    Wrapper cho UpBlock2D để tương thích với FontDiffuser.
+    Tự động resize skip-connection nếu kích thước không khớp.
     """
     def forward(
         self, 
         hidden_states, 
         res_hidden_states_tuple, 
-        style_structure_features=None,  # Nhận nhưng không dùng (để tránh lỗi)
+        style_structure_features=None, 
         temb=None, 
-        encoder_hidden_states=None,     # Nhận nhưng không dùng
+        encoder_hidden_states=None, 
         upsample_size=None,
-        **kwargs                        # Nhận các tham số thừa khác
+        **kwargs
     ):
-        # 1. Gọi hàm forward của cha (UpBlock2D gốc)
-        # Chỉ truyền đúng những gì UpBlock2D cần
-        hidden_states = super().forward(
-            hidden_states=hidden_states, 
-            res_hidden_states_tuple=res_hidden_states_tuple, 
-            temb=temb, 
-            upsample_size=upsample_size
-        )
-
-        # 2. Trả về thêm số 0.0 để giả lập offset_out
-        # Code bên ngoài sẽ nhận được (ảnh, 0) -> Hợp lệ!
-        offset_out = 0.0
+        # KHÔNG gọi super().forward() nữa vì ta cần can thiệp vào vòng lặp
         
-        return hidden_states, offset_out
+        for resnet in self.resnets:
+            # 1. Lấy skip connection từ tuple
+            res_hidden_states = res_hidden_states_tuple[-1]
+            res_hidden_states_tuple = res_hidden_states_tuple[:-1]
+            
+            # === [FIX QUAN TRỌNG] TỰ ĐỘNG RESIZE ===
+            # Kiểm tra xem chiều cao (H) và rộng (W) có khớp nhau không
+            if res_hidden_states.shape[-2:] != hidden_states.shape[-2:]:
+                res_hidden_states = F.interpolate(
+                    res_hidden_states, 
+                    size=hidden_states.shape[-2:], # Resize skip theo size của main input
+                    mode="bilinear", 
+                    align_corners=False
+                )
+            # =======================================
+
+            # 2. Ghép nối (Bây giờ size đã khớp nên không lỗi nữa)
+            hidden_states = torch.cat([hidden_states, res_hidden_states], dim=1)
+
+            # 3. Chạy qua ResNet block (Giữ nguyên logic gốc)
+            if self.training and self.gradient_checkpointing:
+                def create_custom_forward(module):
+                    def custom_forward(*inputs):
+                        return module(*inputs)
+                    return custom_forward
+
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
+            else:
+                hidden_states = resnet(hidden_states, temb)
+
+        # 4. Upsample cuối block (nếu có)
+        if self.upsamplers is not None:
+            for upsampler in self.upsamplers:
+                hidden_states = upsampler(hidden_states, upsample_size)
+
+        # 5. Trả về offset giả = 0.0 để khớp format output
+        return hidden_states, 0.0
