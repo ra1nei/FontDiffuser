@@ -97,6 +97,9 @@ def get_parser():
                         help="Strict mode khi load checkpoint (mặc định bỏ qua mismatch layer).")
 
     # RSI parser --hopefully it won't fuck up
+    parser.add_argument("--rsi_mode", type=str, default="rsi_original",
+                        choices=["no_rsi", "rsi_no_scale", "rsi_original"],
+                        help="Chọn chế độ RSI: 'no_rsi' (bỏ hẳn), 'rsi_no_scale' (giữ block nhưng không méo), 'rsi_original' (mặc định)")
     parser.add_argument("--deformation_scale", type=float, default=1.0, 
                         help="Scale factor for glyph deformation (RSI). Set 0.0 to disable. Default: 1.0")
     return parser
