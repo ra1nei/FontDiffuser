@@ -436,7 +436,6 @@ class DownBlock2D(nn.Module):
 
 
 class StyleRSIUpBlock2D(nn.Module):
-    ALLOW_DEFORMATION = True
     def __init__(
         self,
         in_channels: int,
