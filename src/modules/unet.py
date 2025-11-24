@@ -52,10 +52,12 @@ class UNet(ModelMixin, ConfigMixin):
         content_encoder_downsample_size: int = 4,
         content_start_channel: int = 16,
         reduction: int = 32,
+        deformation_scale: float = 1.0,
     ):
         super().__init__()
 
         self.content_encoder_downsample_size = content_encoder_downsample_size
+        self.deformation_scale = deformation_scale
 
         self.sample_size = sample_size
         time_embed_dim = block_out_channels[0] * 4
@@ -158,6 +160,7 @@ class UNet(ModelMixin, ConfigMixin):
                 cross_attention_dim=cross_attention_dim,
                 attn_num_head_channels=attention_head_dim,
                 upblock_index=i,
+                deformation_scale=deformation_scale,
             )
             self.up_blocks.append(up_block)
             prev_output_channel = output_channel

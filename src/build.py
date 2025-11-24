@@ -36,7 +36,9 @@ def build_unet(args):
         channel_attn=args.channel_attn,
         content_encoder_downsample_size=args.content_encoder_downsample_size,
         content_start_channel=args.content_start_channel,
-        reduction=32)
+        reduction=32,
+        deformation_scale=args.deformation_scale
+    )
     
     return unet
 

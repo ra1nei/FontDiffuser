@@ -76,18 +76,21 @@ def main():
     args = get_args()
 
     # === THÊM ĐOẠN XỬ LÝ LOGIC NÀY ===
-    if args.rsi_mode == "rsi_no_scale":
-        # Tắt tính năng biến dạng trên toàn bộ Class
-        StyleRSIUpBlock2D.ALLOW_DEFORMATION = False
-        print("[Training Setup] RSI Mode: NO SCALE (Deformation Disabled)")
-    elif args.rsi_mode == "rsi_original":
-        # Bật tính năng biến dạng
-        StyleRSIUpBlock2D.ALLOW_DEFORMATION = True
-        print("[Training Setup] RSI Mode: ORIGINAL (Deformation Enabled)")
-    elif args.rsi_mode == "no_rsi":
-        print("[Training Setup] RSI Mode: NO RSI (Standard UNet Architecture)")
+    # if args.rsi_mode == "rsi_no_scale":
+    #     # Tắt tính năng biến dạng trên toàn bộ Class
+    #     StyleRSIUpBlock2D.ALLOW_DEFORMATION = False
+    #     print("[Training Setup] RSI Mode: NO SCALE (Deformation Disabled)")
+    # elif args.rsi_mode == "rsi_original":
+    #     # Bật tính năng biến dạng
+    #     StyleRSIUpBlock2D.ALLOW_DEFORMATION = True
+    #     print("[Training Setup] RSI Mode: ORIGINAL (Deformation Enabled)")
+    # elif args.rsi_mode == "no_rsi":
+    #     print("[Training Setup] RSI Mode: NO RSI (Standard UNet Architecture)")
     # =================================
-
+    print(f"[Training Setup] Deformation Scale set to: {args.deformation_scale}")
+    if args.deformation_scale == 0.0:
+        print("-> Deformation is DISABLED (Standard Conv behavior).")
+    
     logging_dir = f"{args.output_dir}/{args.logging_dir}"
 
     accelerator = Accelerator(

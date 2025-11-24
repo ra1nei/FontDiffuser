@@ -75,7 +75,8 @@ def get_up_block(
     upblock_index,
     resnet_groups=None,
     cross_attention_dim=None,
-    structure_feature_begin=64):
+    structure_feature_begin=64,
+    deformation_scale=1.0,):
 
     up_block_type = up_block_type[7:] if up_block_type.startswith("UNetRes") else up_block_type
     if up_block_type == "UpBlock2D":
@@ -103,7 +104,8 @@ def get_up_block(
             cross_attention_dim=cross_attention_dim,
             attn_num_head_channels=attn_num_head_channels,
             structure_feature_begin=structure_feature_begin,
-            upblock_index=upblock_index)
+            upblock_index=upblock_index,
+            deformation_scale=deformation_scale)
     elif up_block_type == "UpBlock2D_Compatible":
         return UpBlock2D_Compatible(
             num_layers=num_layers,
@@ -456,6 +458,7 @@ class StyleRSIUpBlock2D(nn.Module):
         structure_feature_begin=64, 
         upblock_index=1,
         add_upsample=True,
+        deformation_scale=1.0, # DEBUG
     ):
         super().__init__()
         resnets = []
@@ -466,6 +469,7 @@ class StyleRSIUpBlock2D(nn.Module):
         self.attention_type = attention_type
         self.attn_num_head_channels = attn_num_head_channels
         self.upblock_index = upblock_index
+        self.deformation_scale = deformation_scale
 
         for i in range(num_layers):
             res_skip_channels = in_channels if (i == num_layers - 1) else out_channels
@@ -568,13 +572,14 @@ class StyleRSIUpBlock2D(nn.Module):
             offset = sc_inter_offset(res_hidden_states, style_content_feat)
             offset = offset.contiguous()
             # offset sum
+
+            ### DEBUG
+            if self.deformation_scale != 1.0:
+                offset = offset * self.deformation_scale
+            ###
+
             offset_sum = torch.mean(torch.abs(offset))
             total_offset += offset_sum
-
-            ### DEBUG: RSI without changing the glyph size in the hope of preventing the metrics not getting fucked up
-            if not self.ALLOW_DEFORMATION:
-                # Nếu cấm biến dạng -> ép offset về 0
-                offset = torch.zeros_like(offset)
 
             res_hidden_states = res_hidden_states.contiguous()
             res_hidden_states = dcn_deform(res_hidden_states, offset)
