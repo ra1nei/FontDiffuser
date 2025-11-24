@@ -74,8 +74,9 @@ def load_checkpoint(load_dir, model, optimizer=None, lr_scheduler=None):
 
 def main():
     args = get_args()
-
+    
     ### DEBUG
+    print(args)
     print(f"[Training Setup] Deformation Scale set to: {args.deformation_scale}")
     if args.deformation_scale == 0.0:
         print("-> Deformation is DISABLED (Standard Conv behavior).")
