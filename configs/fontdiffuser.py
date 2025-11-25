@@ -98,7 +98,7 @@ def get_parser():
 
     # RSI parser --hopefully it won't fuck up
     parser.add_argument("--rsi_mode", type=str, default="rsi",
-                        choices=["no_rsi", "rsi"],
+                        choices=["no_rsi", "rsi", "rsi_no_scale"],
                         help="Chọn chế độ RSI: 'no_rsi' (bỏ hẳn), 'rsi' (giữ, scale bằng deformable_scale)")
     parser.add_argument("--deformation_scale", type=float, default=1.0, 
                         help="Scale factor for glyph deformation (RSI). Set 0.0 to disable. Default: 1.0")
