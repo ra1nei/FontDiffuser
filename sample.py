@@ -109,7 +109,7 @@ def save_single_image(save_dir, image, filename="out_single.png"):
 def load_fontdiffuer_pipeline(args):
     # Load the model state_dict
     unet = build_unet(args=args)
-    unet.load_state_dict(torch.load(f"{args.ckpt_dir}/unet.pth"))
+    unet.load_state_dict(torch.load(f"{args.ckpt_dir}/unet.pth"), strict=False)
     style_encoder = build_style_encoder(args=args)
     style_encoder.load_state_dict(torch.load(f"{args.ckpt_dir}/style_encoder.pth"))
     content_encoder = build_content_encoder(args=args)
