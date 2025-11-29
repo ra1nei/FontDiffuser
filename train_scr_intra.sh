@@ -1,0 +1,11 @@
+!python train_scr.py \
+    --data_root="/datastore/cndt_hangdv/TDKD/dataset/FontDiffuser" \
+    --report_to="wandb" \
+    --experience_name="SCR-INTRA-64" \
+    --max_train_steps=200000 \
+    --ckpt_interval=5000 \
+    --batch_size=16 \
+    --learning_rate=1e-4 \
+    --loss_mode=intra \
+    --resolution=64 \
+    --resume_ckpt="/datastore/cndt_hangdv/TDKD/FontDiffuser/ckpt_scr/scr64_intra_050000.pth"
