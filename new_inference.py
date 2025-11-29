@@ -130,10 +130,10 @@ def batch_sampling(args):
         if args.random_style:
             # RANDOM MODE
             if args.random_mode == "full":
-                candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)] + \
-                             [chr(c) for c in range(ord('a'), ord('z')+1)]
+                candidates = [chr(c)  + "+" for c in range(ord('A'), ord('Z')+1)] + \
+                             [chr(c)  + "+" for c in range(ord('a'), ord('z')+1)]
             elif args.random_mode == "upper":
-                candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)]
+                candidates = [chr(c) + "+" for c in range(ord('A'), ord('Z')+1)]
 
             style_candidates = [
                 f for f in os.listdir(style_dir)
