@@ -128,29 +128,30 @@ def batch_sampling(args):
         style_dir = os.path.join(args.english_dir, font_name)
 
         if args.random_style:
-            # random_mode = full (A-Z + a-z)
-            # random_mode = upper (A-Z)
+            # RANDOM MODE
             if args.random_mode == "full":
                 candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)] + \
                              [chr(c) for c in range(ord('a'), ord('z')+1)]
             elif args.random_mode == "upper":
                 candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)]
-            else:
-                raise ValueError("random_mode must be 'full' or 'upper'.")
 
-            # lọc file trong thư mục phù hợp các chữ đó
             style_candidates = [
                 f for f in os.listdir(style_dir)
-                if f.split('.')[0] in candidates
+                if os.path.splitext(f)[0] in candidates
             ]
+
             if len(style_candidates) == 0:
                 continue
 
             style_file = random.choice(style_candidates)
 
         else:
-            style_file = "A+.png"
-
+            # FIXED MODE
+            # args.fixed_style = "A+" hoặc "a"
+            if args.fixed_style == "A+":
+                style_file = "A+.png"
+            elif args.fixed_style == "a":
+                style_file = "a.png"
 
         style_path = os.path.join(style_dir, style_file)
 
@@ -244,8 +245,12 @@ def main():
     parser.add_argument("--name", type=str)
     parser.add_argument("--model", type=str)
     parser.add_argument("--random_mode", type=str, default="full",
-                    choices=["full", "upper"],
-                    help="full = A-Z + a-z, upper = A-Z")
+                        choices=["full", "upper"],
+                        help="Nếu random_style: full = A-Z + a-z, upper = A-Z")
+    parser.add_argument("--fixed_style", type=str, default="A+",
+                        choices=["A+", "a"],
+                        help="Nếu không random_style: chọn A+ hoặc a")
+
 
     args = parser.parse_args()
 
