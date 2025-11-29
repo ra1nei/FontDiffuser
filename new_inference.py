@@ -244,13 +244,15 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--name", type=str)
     parser.add_argument("--model", type=str)
+
+    parser.add_argument("--random_style", action="store_true",
+                    help="Nếu bật thì chọn style random")
     parser.add_argument("--random_mode", type=str, default="full",
                         choices=["full", "upper"],
                         help="Nếu random_style: full = A-Z + a-z, upper = A-Z")
     parser.add_argument("--fixed_style", type=str, default="A+",
                         choices=["A+", "a"],
                         help="Nếu không random_style: chọn A+ hoặc a")
-
 
     args = parser.parse_args()
 
