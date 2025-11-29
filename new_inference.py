@@ -128,14 +128,29 @@ def batch_sampling(args):
         style_dir = os.path.join(args.english_dir, font_name)
 
         if args.random_style:
+            # random_mode = full (A-Z + a-z)
+            # random_mode = upper (A-Z)
+            if args.random_mode == "full":
+                candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)] + \
+                             [chr(c) for c in range(ord('a'), ord('z')+1)]
+            elif args.random_mode == "upper":
+                candidates = [chr(c) for c in range(ord('A'), ord('Z')+1)]
+            else:
+                raise ValueError("random_mode must be 'full' or 'upper'.")
+
+            # lọc file trong thư mục phù hợp các chữ đó
             style_candidates = [
                 f for f in os.listdir(style_dir)
-                if f.lower().endswith((".png", ".jpg", ".jpeg"))
+                if f.split('.')[0] in candidates
             ]
+            if len(style_candidates) == 0:
+                continue
+
             style_file = random.choice(style_candidates)
 
         else:
-            style_file = "a.png"
+            style_file = "A+.png"
+
 
         style_path = os.path.join(style_dir, style_file)
 
@@ -228,8 +243,9 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--name", type=str)
     parser.add_argument("--model", type=str)
-    parser.add_argument("--random_style", action="store_true",
-                    help="Nếu bật thì chọn style random từ a-z (viết thường), và dùng file Upper+.png")
+    parser.add_argument("--random_mode", type=str, default="full",
+                    choices=["full", "upper"],
+                    help="full = A-Z + a-z, upper = A-Z")
 
     args = parser.parse_args()
 
