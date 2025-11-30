@@ -22,6 +22,6 @@ git pull && accelerate launch train.py \
     --drop_prob=0.1 \
     --mixed_precision="no" \
     --lang_mode="same" \
-    --experience_name="P1_SAME" \
-    --output_dir="ckpt/p1_same_64" \
+    --experience_name="P1_SAME_BS16" \
+    --output_dir="ckpt/p1_same" \
     --rsi_mode="rsi"

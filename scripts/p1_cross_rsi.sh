@@ -22,6 +22,6 @@ git pull && accelerate launch train.py \
     --drop_prob=0.1 \
     --mixed_precision="no" \
     --lang_mode="cross" \
-    --experience_name="P1_CROSS" \
-    --output_dir="ckpt/p1_cross_64" \
+    --experience_name="P1_CROSS_BS16" \
+    --output_dir="ckpt/p1_cross" \
     --rsi_mode="rsi"
