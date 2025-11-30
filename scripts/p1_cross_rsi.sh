@@ -1,6 +1,6 @@
 git pull && accelerate launch train.py \
     --seed=123 \
-    --data_root="/datastore/cndt_hangdv/TDKD/FontDiffuser/image_dataset/FontDiffuser" \
+    --data_root="/datastore/cndt_hangdv/TDKD/dataset/FontDiffuser" \
     --report_to="wandb" \
     --resolution=64 \
     --style_image_size=64 \
