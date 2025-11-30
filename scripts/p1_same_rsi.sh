@@ -9,7 +9,9 @@ LOGFILE="p1_same.log"
 echo "Starting training on GPU 3 and 4..."
 echo "Log file: $LOGFILE"
 
-git pull && nohup accelerate launch --num_processes=2 train.py \
+git pull 
+
+nohup accelerate launch --num_processes=2 train.py \
     --seed=123 \
     --data_root="/datastore/cndt_hangdv/TDKD/dataset/FontDiffuser" \
     --report_to="wandb" \
