@@ -1,11 +1,4 @@
-export CUDA_VISIBLE_DEVICES=3,4
-
-LOGFILE="p1_cross.log"
-
-echo "Starting training on GPU 3 and 4..."
-echo "Log file: $LOGFILE"
-
-git pull && nohup accelerate launch --num_processes=2 train.py \
+git pull && accelerate launch train.py \
     --seed=123 \
     --data_root="/datastore/cndt_hangdv/TDKD/FontDiffuser/image_dataset/FontDiffuser" \
     --report_to="wandb" \
@@ -30,6 +23,5 @@ git pull && nohup accelerate launch --num_processes=2 train.py \
     --mixed_precision="no" \
     --lang_mode="cross" \
     --experience_name="P1_CROSS" \
-    --output_dir="ckpt/p1_cross" \
-    --rsi_mode "rsi" \
-    > "$LOGFILE" 2>&1 &
+    --output_dir="ckpt/p1_cross_64" \
+    --rsi_mode "rsi"
