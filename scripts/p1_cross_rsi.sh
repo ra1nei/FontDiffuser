@@ -24,4 +24,4 @@ git pull && accelerate launch train.py \
     --lang_mode="cross" \
     --experience_name="P1_CROSS" \
     --output_dir="ckpt/p1_cross_64" \
-    --rsi_mode "rsi"
+    --rsi_mode="rsi"

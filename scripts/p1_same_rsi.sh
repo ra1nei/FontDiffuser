@@ -24,4 +24,4 @@ git pull && accelerate launch train.py \
     --lang_mode="same" \
     --experience_name="P1_SAME" \
     --output_dir="ckpt/p1_same_64" \
-    --rsi_mode "rsi"
+    --rsi_mode="rsi"
