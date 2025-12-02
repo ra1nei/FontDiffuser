@@ -255,7 +255,13 @@ def main():
                         help="Nếu không random_style: chọn A+ hoặc a")
 
     args = parser.parse_args()
-
+    if isinstance(args.style_image_size, int):
+        size = args.style_image_size
+        args.style_image_size = (size, size)
+        
+    if isinstance(args.content_image_size, int):
+        size = args.content_image_size
+        args.content_image_size = (size, size)
     os.makedirs(args.save_dir, exist_ok=True)
     # test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
     # args.content_image_size = args.style_image_size = test_img.size
