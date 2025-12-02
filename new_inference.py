@@ -185,7 +185,7 @@ def batch_sampling(args):
                 content_encoder_downsample_size=args.content_encoder_downsample_size,
                 t_start=args.t_start,
                 t_end=args.t_end,
-                dm_size=args.resolution[0],
+                dm_size=args.resolution,
                 algorithm_type=args.algorithm_type,
                 skip_type=args.skip_type,
                 method=args.method,
