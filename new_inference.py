@@ -257,8 +257,8 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
-    test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
-    args.content_image_size = args.style_image_size = test_img.size
+    # test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
+    # args.content_image_size = args.style_image_size = test_img.size
     print(f"⛏ Auto-detected image size:", args.content_image_size)
 
     batch_sampling(args)
