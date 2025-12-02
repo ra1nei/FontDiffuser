@@ -172,8 +172,8 @@ def batch_sampling(args):
         font_name, glyph_name = s["font"], s["glyph"]
         content_path, style_path, target_path = s["content"], s["style"], s["target"]
 
-        content_img = preprocess_image(content_path, args.resolution, args.device)
-        style_img = preprocess_image(style_path, args.resolution, args.device)
+        content_img = preprocess_image(content_path, args.content_image_size, args.device)
+        style_img = preprocess_image(style_path, args.style_image_size, args.device)
 
         with torch.no_grad():
             out_imgs = pipe.generate(
@@ -185,7 +185,7 @@ def batch_sampling(args):
                 content_encoder_downsample_size=args.content_encoder_downsample_size,
                 t_start=args.t_start,
                 t_end=args.t_end,
-                dm_size=args.resolution,
+                dm_size=args.content_image_size[0],
                 algorithm_type=args.algorithm_type,
                 skip_type=args.skip_type,
                 method=args.method,
@@ -202,7 +202,7 @@ def batch_sampling(args):
             out_pil = out_img
 
         # ensure correct resolution
-        out_pil = out_pil.resize(args.resolution)
+        out_pil = out_pil.resize(args.content_image_size)
 
         # Tên file như yêu cầu
         gen_filename = f"{font_name}|{glyph_name}|generated_images.png"
@@ -210,7 +210,7 @@ def batch_sampling(args):
 
         # Lưu ảnh generated và groundtruth
         save_single_image(args.save_dir, out_pil, gen_filename)
-        target_pil = load_image_tensor(target_path, args.resolution)
+        target_pil = load_image_tensor(target_path, args.content_image_size)
         save_single_image(args.save_dir, target_pil, gt_filename)
 
         # ================================
@@ -222,7 +222,7 @@ def batch_sampling(args):
             gen_image_pil=out_pil,
             content_image_path=content_path,
             style_image_path=style_path,
-            resolution=args.resolution,
+            resolution=args.content_image_size,
             filename=merged_filename
         )
 
@@ -258,8 +258,8 @@ def main():
 
     os.makedirs(args.save_dir, exist_ok=True)
     test_img = Image.open(os.path.join(args.source_dir, os.listdir(args.source_dir)[0]))
-    args.resolution = args.resolution = test_img.size
-    print(f"⛏ Auto-detected image size:", args.resolution)
+    args.content_image_size = args.style_image_size = test_img.size
+    print(f"⛏ Auto-detected image size:", args.content_image_size)
 
     batch_sampling(args)
 
