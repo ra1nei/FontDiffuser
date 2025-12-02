@@ -336,7 +336,9 @@ def content_encoder_arch(ch =64,out_channel_multiplier = 1, input_nc = 3):
     arch[80] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
                                 'out_channels' : [item * ch for item in [1,2,4]],
                                 'resolution': [40,20,10]}
-    
+    arch[96] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
+                                'out_channels' : [item * ch for item in [1,2,4]],
+                                'resolution': [48,24,12]}
     arch[64] = {'in_channels':   [input_nc] + [ch*item for item in  [1,2]],
                                 'out_channels' : [item * ch for item in [1,2,4]],
                                 'resolution': [32,16,8]}
@@ -373,6 +375,8 @@ class ContentEncoder(ModelMixin, ConfigMixin):
         self.fp16 = G_fp16
 
         if self.resolution == 64:
+            self.save_features = [0,1,2,3,4]
+        elif self.resolution == 96:
             self.save_features = [0,1,2,3,4]
         elif self.resolution == 80:
             self.save_features = [0,1,2,3,4]
