@@ -6,14 +6,17 @@ from src import (ContentEncoder,
 
 def build_unet(args):
     if args.rsi_mode == "no_rsi":
-        up_blocks = ('UpBlock2D', 'UpBlock2D_Compatible', 'UpBlock2D_Compatible', 'UpBlock2D')
+        up_blocks = ('UpBlock2D', 'UpBlock2D', 'UpBlock2D', 'UpBlock2D')
         print(f"[Model Config] Mode: {args.rsi_mode} -> Disabled RSI Block.")
+        print(up_blocks)
     elif args.rsi_mode == "rsi_no_scale":
         up_blocks = ('UpBlock2D', 'StyleOnlyUpBlock2D', 'StyleOnlyUpBlock2D', 'UpBlock2D')
         print(f"[Model Config] Mode: {args.rsi_mode} -> RSI Block without scaling.")
+        print(up_blocks)
     else:
         up_blocks = ('UpBlock2D', 'StyleRSIUpBlock2D', 'StyleRSIUpBlock2D', 'UpBlock2D')
         print(f"[Model Config] Mode: {args.rsi_mode} -> Enabled RSI Block structure.")
+        print(up_blocks)
     unet = UNet(
         sample_size=args.resolution,
         in_channels=3,
