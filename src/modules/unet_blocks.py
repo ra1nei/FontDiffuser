@@ -75,7 +75,8 @@ def get_up_block(
     upblock_index,
     resnet_groups=None,
     cross_attention_dim=None,
-    structure_feature_begin=64):
+    structure_feature_begin=64,
+    deformation_scale=1.0,):
 
     up_block_type = up_block_type[7:] if up_block_type.startswith("UNetRes") else up_block_type
     if up_block_type == "UpBlock2D":
@@ -103,7 +104,37 @@ def get_up_block(
             cross_attention_dim=cross_attention_dim,
             attn_num_head_channels=attn_num_head_channels,
             structure_feature_begin=structure_feature_begin,
-            upblock_index=upblock_index)
+            upblock_index=upblock_index,
+            deformation_scale=deformation_scale)
+    elif up_block_type == "StyleOnlyUpBlock2D":
+        return StyleOnlyUpBlock2D(
+            num_layers=num_layers,
+            in_channels=in_channels,
+            out_channels=out_channels,
+            prev_output_channel=prev_output_channel,
+            temb_channels=temb_channels,
+            add_upsample=add_upsample,
+            resnet_eps=resnet_eps,
+            resnet_act_fn=resnet_act_fn,
+            resnet_groups=resnet_groups,
+            cross_attention_dim=cross_attention_dim,
+            attn_num_head_channels=attn_num_head_channels,
+            structure_feature_begin=structure_feature_begin,
+            upblock_index=upblock_index,
+            deformation_scale=deformation_scale)
+    elif up_block_type == "UpBlock2D_Compatible":
+        return UpBlock2D_Compatible(
+            num_layers=num_layers,
+            in_channels=in_channels,
+            out_channels=out_channels,
+            prev_output_channel=prev_output_channel,
+            temb_channels=temb_channels,
+            add_upsample=add_upsample,
+            resnet_eps=resnet_eps,
+            resnet_act_fn=resnet_act_fn,
+            resnet_groups=resnet_groups
+            # Không cần truyền các tham số của RSI vào init vì class này không dùng
+        )
     else:
         raise ValueError(f"{up_block_type} does not exist.")
 
@@ -419,6 +450,140 @@ class DownBlock2D(nn.Module):
 
         return hidden_states, output_states
 
+class StyleOnlyUpBlock2D(nn.Module):
+    """
+    Phiên bản RSI đã bị 'thiến' chức năng nắn chỉnh hình học.
+    - KHÔNG học Font Size (biến dạng).
+    - CHỈ học Style (Cross-Attention).
+    """
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        prev_output_channel: int,
+        temb_channels: int,
+        dropout: float = 0.0,
+        num_layers: int = 1,
+        resnet_eps: float = 1e-6,
+        resnet_time_scale_shift: str = "default",
+        resnet_act_fn: str = "swish",
+        resnet_groups: int = 32,
+        resnet_pre_norm: bool = True,
+        attn_num_head_channels=1,
+        cross_attention_dim=1280,
+        attention_type="default",
+        output_scale_factor=1.0,
+        downsample_padding=1,
+        structure_feature_begin=64, 
+        upblock_index=1,
+        add_upsample=True,
+        **kwargs # Hứng các tham số thừa
+    ):
+        super().__init__()
+        resnets = []
+        attentions = []
+        
+        # --- BỎ: sc_interpreter_offsets (Bộ não tính offset) ---
+        # --- BỎ: dcn_deforms (Cơ bắp nắn ảnh) ---
+
+        self.attention_type = attention_type
+        self.attn_num_head_channels = attn_num_head_channels
+        self.upblock_index = upblock_index
+
+        for i in range(num_layers):
+            res_skip_channels = in_channels if (i == num_layers - 1) else out_channels
+            resnet_in_channels = prev_output_channel if i == 0 else out_channels
+            
+            # 1. ResNet Block (Bắt buộc)
+            resnets.append(
+                ResnetBlock2D(
+                    in_channels=resnet_in_channels + res_skip_channels,
+                    out_channels=out_channels,
+                    temb_channels=temb_channels,
+                    eps=resnet_eps,
+                    groups=resnet_groups,
+                    dropout=dropout,
+                    time_embedding_norm=resnet_time_scale_shift,
+                    non_linearity=resnet_act_fn,
+                    output_scale_factor=output_scale_factor,
+                    pre_norm=resnet_pre_norm,
+                )
+            )
+            
+            # 2. Attention Block (QUAN TRỌNG: Giữ cái này để học Style)
+            attentions.append(
+                SpatialTransformer(
+                    out_channels,
+                    attn_num_head_channels,
+                    out_channels // attn_num_head_channels,
+                    depth=1,
+                    context_dim=cross_attention_dim,
+                    num_groups=resnet_groups,
+                )
+            )
+            
+        self.attentions = nn.ModuleList(attentions)
+        self.resnets = nn.ModuleList(resnets)
+
+        if add_upsample:
+            self.upsamplers = nn.ModuleList([Upsample2D(out_channels, use_conv=True, out_channels=out_channels)])
+        else:
+            self.upsamplers = None
+
+        self.gradient_checkpointing = False
+
+    def forward(
+        self,
+        hidden_states,
+        res_hidden_states_tuple,
+        style_structure_features=None, # Vẫn nhận nhưng không dùng
+        temb=None,
+        encoder_hidden_states=None,
+        upsample_size=None,
+        **kwargs
+    ):
+        # Safety Check đầu vào
+        if isinstance(hidden_states, tuple): hidden_states = hidden_states[0]
+
+        for resnet, attn in zip(self.resnets, self.attentions):
+            # Lấy skip connection
+            res_hidden_states = res_hidden_states_tuple[-1]
+            res_hidden_states_tuple = res_hidden_states_tuple[:-1]
+            if isinstance(res_hidden_states, tuple): res_hidden_states = res_hidden_states[0]
+
+            # --- LOGIC MỚI: Tự động Resize thay vì dùng DCN ---
+            # Vì ta đã bỏ DCN (thứ vốn dĩ kiêm luôn việc resize), ta phải tự làm thủ công
+            if res_hidden_states.shape[-2:] != hidden_states.shape[-2:]:
+                res_hidden_states = F.interpolate(
+                    res_hidden_states, 
+                    size=hidden_states.shape[-2:], 
+                    mode="bilinear", 
+                    align_corners=False
+                )
+            # --------------------------------------------------
+
+            # Ghép nối và chạy ResNet
+            hidden_states = torch.cat([hidden_states, res_hidden_states], dim=1)
+            
+            if self.training and self.gradient_checkpointing:
+                def create_custom_forward(module):
+                    def custom_forward(*inputs): return module(*inputs)
+                    return custom_forward
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
+                # Chạy Attention (Học Style)
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(attn), hidden_states, encoder_hidden_states)
+            else:
+                hidden_states = resnet(hidden_states, temb)
+                # Chạy Attention (Học Style)
+                hidden_states = attn(hidden_states, context=encoder_hidden_states)
+
+        if self.upsamplers is not None:
+            for upsampler in self.upsamplers:
+                hidden_states = upsampler(hidden_states, upsample_size)
+                if isinstance(hidden_states, tuple): hidden_states = hidden_states[0]
+
+        # Trả về offset = 0.0 giả
+        return hidden_states, 0.0
 
 class StyleRSIUpBlock2D(nn.Module):
     def __init__(
@@ -442,6 +607,7 @@ class StyleRSIUpBlock2D(nn.Module):
         structure_feature_begin=64, 
         upblock_index=1,
         add_upsample=True,
+        deformation_scale=1.0, # DEBUG
     ):
         super().__init__()
         resnets = []
@@ -452,6 +618,7 @@ class StyleRSIUpBlock2D(nn.Module):
         self.attention_type = attention_type
         self.attn_num_head_channels = attn_num_head_channels
         self.upblock_index = upblock_index
+        self.deformation_scale = deformation_scale
 
         for i in range(num_layers):
             res_skip_channels = in_channels if (i == num_layers - 1) else out_channels
@@ -554,6 +721,12 @@ class StyleRSIUpBlock2D(nn.Module):
             offset = sc_inter_offset(res_hidden_states, style_content_feat)
             offset = offset.contiguous()
             # offset sum
+
+            ### DEBUG
+            if self.deformation_scale != 1.0:
+                offset = offset * self.deformation_scale
+            ###
+
             offset_sum = torch.mean(torch.abs(offset))
             total_offset += offset_sum
 
@@ -658,4 +831,139 @@ class UpBlock2D(nn.Module):
             for upsampler in self.upsamplers:
                 hidden_states = upsampler(hidden_states, upsample_size)
 
+        return hidden_states
+    
+import torch.nn.functional as F  # Nhớ import F
+
+class UpBlock2D_Compatible(UpBlock2D):
+    """
+    Wrapper class cho UpBlock2D. 
+    Giải quyết 3 vấn đề tương thích:
+    1. Giao diện (Interface): Nhận tham số thừa của RSI mà không lỗi.
+    2. Input (Tuple Unpacking): Tự động lấy Tensor nếu đầu vào là Tuple (ảnh, offset).
+    3. Kích thước (Resizing): Tự động resize skip-connection nếu size không khớp.
+    """
+    def forward(
+        self, 
+        hidden_states, 
+        res_hidden_states_tuple, 
+        style_structure_features=None, 
+        temb=None, 
+        encoder_hidden_states=None, 
+        upsample_size=None,
+        **kwargs
+    ):
+        # [QUAN TRỌNG 1] Gỡ Tuple đầu vào (Fix lỗi TypeError hiện tại)
+        # Input từ block trước có thể là (hidden_states, offset_out)
+        if isinstance(hidden_states, tuple):
+            hidden_states = hidden_states[0]
+
+        for resnet in self.resnets:
+            # Pop res_hidden_states
+            res_hidden_states = res_hidden_states_tuple[-1]
+            res_hidden_states_tuple = res_hidden_states_tuple[:-1]
+            
+            # [Safety Check] Gỡ Tuple cho skip-connection (đề phòng)
+            if isinstance(res_hidden_states, tuple):
+                res_hidden_states = res_hidden_states[0]
+
+            # [QUAN TRỌNG 2] Tự động Resize (Fix lỗi shape mismatch trước đó)
+            if res_hidden_states.shape[-2:] != hidden_states.shape[-2:]:
+                res_hidden_states = F.interpolate(
+                    res_hidden_states, 
+                    size=hidden_states.shape[-2:], 
+                    mode="bilinear", 
+                    align_corners=False
+                )
+
+            # Ghép nối (Bây giờ cả 2 đều là Tensor và cùng size -> OK)
+            hidden_states = torch.cat([hidden_states, res_hidden_states], dim=1)
+
+            # Chạy qua ResNet
+            if self.training and self.gradient_checkpointing:
+                def create_custom_forward(module):
+                    def custom_forward(*inputs):
+                        return module(*inputs)
+                    return custom_forward
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
+            else:
+                hidden_states = resnet(hidden_states, temb)
+            
+            # [Safety Check] Gỡ Tuple nếu ResNet trả về tuple
+            if isinstance(hidden_states, tuple):
+                hidden_states = hidden_states[0]
+
+        # Upsample cuối block
+        if self.upsamplers is not None:
+            for upsampler in self.upsamplers:
+                hidden_states = upsampler(hidden_states, upsample_size)
+                # [Safety Check]
+                if isinstance(hidden_states, tuple):
+                    hidden_states = hidden_states[0]
+
+        # Trả về format (tensor, offset) để tương thích với block sau
+        return hidden_states, 0.0
+    
+class SimpleMidBlock2D(nn.Module):
+    """
+    Mid-block đơn giản cho Vanilla UNet.
+    Chỉ gồm ResNet blocks, KHÔNG có Cross-Attention hay Style Injection.
+    """
+    def __init__(
+        self,
+        in_channels: int,
+        temb_channels: int,
+        dropout: float = 0.0,
+        num_layers: int = 1,
+        resnet_eps: float = 1e-6,
+        resnet_time_scale_shift: str = "default",
+        resnet_act_fn: str = "swish",
+        resnet_groups: int = 32,
+        resnet_pre_norm: bool = True,
+        output_scale_factor=1.0,
+        **kwargs,
+    ):
+        super().__init__()
+        resnet_groups = resnet_groups if resnet_groups is not None else min(in_channels // 4, 32)
+
+        # Mid block thường luôn bắt đầu bằng 1 ResNet
+        resnets = [
+            ResnetBlock2D(
+                in_channels=in_channels,
+                out_channels=in_channels,
+                temb_channels=temb_channels,
+                eps=resnet_eps,
+                groups=resnet_groups,
+                dropout=dropout,
+                time_embedding_norm=resnet_time_scale_shift,
+                non_linearity=resnet_act_fn,
+                output_scale_factor=output_scale_factor,
+                pre_norm=resnet_pre_norm,
+            )
+        ]
+        
+        # Thêm các lớp ResNet tiếp theo (thay vì Attention)
+        for _ in range(num_layers):
+            resnets.append(
+                ResnetBlock2D(
+                    in_channels=in_channels,
+                    out_channels=in_channels,
+                    temb_channels=temb_channels,
+                    eps=resnet_eps,
+                    groups=resnet_groups,
+                    dropout=dropout,
+                    time_embedding_norm=resnet_time_scale_shift,
+                    non_linearity=resnet_act_fn,
+                    output_scale_factor=output_scale_factor,
+                    pre_norm=resnet_pre_norm,
+                )
+            )
+
+        self.resnets = nn.ModuleList(resnets)
+
+    def forward(self, hidden_states, temb=None, **kwargs):
+        # Forward đơn giản, bỏ qua encoder_hidden_states
+        hidden_states = self.resnets[0](hidden_states, temb)
+        for resnet in self.resnets[1:]:
+            hidden_states = resnet(hidden_states, temb)
         return hidden_states

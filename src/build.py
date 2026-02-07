@@ -4,22 +4,40 @@ from src import (ContentEncoder,
                  UNet,
                  SCR)
 
-
 def build_unet(args):
+    # --- RSI ---
+    if not args.rsi:
+        # RSI OFF
+        up_blocks = ('UpBlock2D', 'StyleOnlyUpBlock2D', 'StyleOnlyUpBlock2D', 'UpBlock2D')
+        print("[Model Config] RSI: OFF")
+        print(up_blocks)
+    else:
+        # RSI ON
+        up_blocks = ('UpBlock2D', 'StyleRSIUpBlock2D', 'StyleRSIUpBlock2D', 'UpBlock2D')
+        print("[Model Config] RSI: ON")
+        print(up_blocks)
+
+    # --- MCA ---
+    if not args.mca:
+        # MCA OFF
+        down_blocks = ('DownBlock2D', 'DownBlock2D', 'DownBlock2D', 'DownBlock2D')
+        print("[Model Config] MCA: OFF")
+        print(down_blocks)
+    else:
+        # MCA ON
+        down_blocks = ('DownBlock2D', 'MCADownBlock2D', 'MCADownBlock2D', 'DownBlock2D')
+        print("[Model Config] MCA: ON")
+        print(down_blocks)
+
+
     unet = UNet(
         sample_size=args.resolution,
         in_channels=3,
         out_channels=3,
         flip_sin_to_cos=True,
         freq_shift=0,
-        down_block_types=('DownBlock2D', 
-                          'MCADownBlock2D',
-                          'MCADownBlock2D', 
-                          'DownBlock2D'),
-        up_block_types=('UpBlock2D', 
-                        'StyleRSIUpBlock2D',
-                        'StyleRSIUpBlock2D', 
-                        'UpBlock2D'),
+        down_block_types=down_blocks,
+        up_block_types=up_blocks,
         block_out_channels=args.unet_channels, 
         layers_per_block=2,
         downsample_padding=1,
@@ -32,10 +50,11 @@ def build_unet(args):
         channel_attn=args.channel_attn,
         content_encoder_downsample_size=args.content_encoder_downsample_size,
         content_start_channel=args.content_start_channel,
-        reduction=32)
+        reduction=32,
+        deformation_scale=args.deformation_scale,
+    )
     
     return unet
-
 
 def build_style_encoder(args):
     style_image_encoder = StyleEncoder(
@@ -54,10 +73,13 @@ def build_content_encoder(args):
 
 
 def build_scr(args):
+    disable_augment = getattr(args, "disable_scr_augment", False)
+
     scr = SCR(
         temperature=args.temperature,
         mode=args.mode,
-        image_size=args.scr_image_size)
+        image_size=args.resolution,
+        augment=not disable_augment)
     print("Loaded SCR module for supervision successfully!")
     return scr
 

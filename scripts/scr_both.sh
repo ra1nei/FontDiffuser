@@ -1,0 +1,14 @@
+accelerate launch train_scr.py \
+    --data_root="" \
+    --report_to="wandb" \
+    --experience_name="" \
+    --max_train_steps=200000 \
+    --ckpt_interval=100000 \
+    --batch_size=16 \
+    --learning_rate=1e-4 \
+    --save_dir="" \
+    --loss_mode="both" \
+    --lang_mode="cross" \
+    --alpha_intra=0.3 \
+    --beta_cross=0.7 \
+    --resume_ckpt=""

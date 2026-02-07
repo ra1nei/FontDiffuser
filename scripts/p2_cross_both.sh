@@ -1,0 +1,34 @@
+accelerate launch train.py \
+    --seed=123 \
+    --data_root="" \
+    --report_to="wandb" \
+    --phase_2 \
+    --scr_ckpt_path="" \
+    --sc_coefficient=0.01 \
+    --num_neg=4 \
+    --resolution=64 \
+    --style_image_size=64 \
+    --content_image_size=64 \
+    --content_encoder_downsample_size=3 \
+    --channel_attn=True \
+    --content_start_channel=64 \
+    --style_start_channel=64 \
+    --train_batch_size=4 \
+    --perceptual_coefficient=0.01 \
+    --offset_coefficient=0.5 \
+    --max_train_steps=30000 \
+    --ckpt_interval=15000 \
+    --gradient_accumulation_steps=1 \
+    --log_interval=50 \
+    --learning_rate=1e-5 \
+    --lr_scheduler="constant" \
+    --lr_warmup_steps=1000 \
+    --drop_prob=0.1 \
+    --mixed_precision="no" \
+    --lang_mode="cross" \
+    --scr_mode="both" \
+    --alpha_intra=0.3 \
+    --beta_cross=0.7 \
+    --experience_name="" \
+    --output_dir="" \
+    --phase_1_ckpt_dir=""

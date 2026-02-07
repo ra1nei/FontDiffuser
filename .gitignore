@@ -3,7 +3,6 @@ phase_1_ckpt/
 outputs/
 run_sh/
 ckpt/
-ttf/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

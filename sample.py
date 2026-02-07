@@ -4,6 +4,7 @@ import time
 import random
 import numpy as np
 from PIL import Image
+import imageio
 
 import torch
 import torchvision.transforms as transforms
@@ -19,9 +20,7 @@ from utils import (ttf2im,
                    load_ttf,
                    is_char_in_font,
                    save_args_to_yaml,
-                   save_single_image,
                    save_image_with_content_style)
-
 
 def arg_parse():
     from configs.fontdiffuser import get_parser
@@ -47,7 +46,6 @@ def arg_parse():
     args.content_image_size = (content_image_size, content_image_size)
 
     return args
-
 
 def image_process(args, content_image=None, style_image=None):
     if not args.demo:
@@ -91,10 +89,22 @@ def image_process(args, content_image=None, style_image=None):
 
     return content_image, style_image, content_image_pil
 
+def save_single_image(save_dir, image, filename="out_single.png"):
+    """
+    Lưu một ảnh đơn (không có content/style overlay) vào thư mục save_dir.
+    - save_dir: thư mục lưu ảnh
+    - image: ảnh dạng PIL.Image
+    - filename: tên file cần lưu, ví dụ 'fontA_to_fontB_0001.jpg'
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, filename)
+    image.save(save_path)
+    return save_path
+
 def load_fontdiffuer_pipeline(args):
     # Load the model state_dict
     unet = build_unet(args=args)
-    unet.load_state_dict(torch.load(f"{args.ckpt_dir}/unet.pth"))
+    unet.load_state_dict(torch.load(f"{args.ckpt_dir}/unet.pth"), strict=False)
     style_encoder = build_style_encoder(args=args)
     style_encoder.load_state_dict(torch.load(f"{args.ckpt_dir}/style_encoder.pth"))
     content_encoder = build_content_encoder(args=args)
@@ -122,6 +132,24 @@ def load_fontdiffuer_pipeline(args):
 
     return pipe
 
+def save_real_process_gif(intermediate_tensors, save_path):
+    """Hàm tạo GIF từ list tensor thật"""
+    frames = []
+    print(f"Generating Real GIF from {len(intermediate_tensors)} steps...")
+    for tensor in intermediate_tensors:
+        # Tensor thường có shape [1, 3, H, W] và range [-1, 1] hoặc [0, 1] tùy cách bạn return ở src
+        # Giả sử bạn đã normalize về [0, 1] trong src, nếu chưa thì phải làm ở đây
+        if tensor.min() < 0:
+            tensor = (tensor / 2 + 0.5).clamp(0, 1)
+            
+        img_np = tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        img_np = (img_np * 255).astype(np.uint8)
+        frames.append(Image.fromarray(img_np))
+    
+    # Lưu GIF
+    imageio.mimsave(save_path, frames, duration=100, loop=0)
+    print(f"Saved Real GIF to {save_path}")
+    return save_path
 
 def sampling(args, pipe, content_image=None, style_image=None):
     if not args.demo:
@@ -145,7 +173,7 @@ def sampling(args, pipe, content_image=None, style_image=None):
         style_image = style_image.to(args.device)
         print(f"Sampling by DPM-Solver++ ......")
         start = time.time()
-        images = pipe.generate(
+        output = pipe.generate(
             content_images=content_image,
             style_images=style_image,
             batch_size=1,
@@ -159,11 +187,25 @@ def sampling(args, pipe, content_image=None, style_image=None):
             skip_type=args.skip_type,
             method=args.method,
             correcting_x0_fn=args.correcting_x0_fn)
+        
+        intermediates = []
+        if isinstance(output, tuple):
+            images, intermediates = output
+        else:
+            images = output
+            print("Warning: Không tìm thấy intermediate steps.")
+
         end = time.time()
 
         if args.save_image:
             print(f"Saving the image ......")
             save_single_image(save_dir=args.save_image_dir, image=images[0])
+
+            # Save GIF
+            if len(intermediates) > 0:
+                gif_path = os.path.join(args.save_image_dir, "process_real.gif")
+                save_real_process_gif(intermediates, gif_path)
+
             if args.character_input:
                 save_image_with_content_style(save_dir=args.save_image_dir,
                                             image=images[0],
@@ -179,8 +221,7 @@ def sampling(args, pipe, content_image=None, style_image=None):
                                             style_image_path=args.style_image_path,
                                             resolution=args.resolution)
             print(f"Finish the sampling process, costing time {end - start}s")
-        return images[0]
-
+        return images[0], intermediates
 
 def load_controlnet_pipeline(args,
                              config_path="lllyasviel/sd-controlnet-canny", 
@@ -203,7 +244,6 @@ def load_controlnet_pipeline(args,
 
     return pipe
 
-
 def controlnet(text_prompt, 
                pil_image,
                pipe):
@@ -222,7 +262,6 @@ def controlnet(text_prompt,
                  image=canny_image,
                  output_type='pil').images[0]
     return image
-
 
 def load_instructpix2pix_pipeline(args,
                                   ckpt_path="timbrooks/instruct-pix2pix"):

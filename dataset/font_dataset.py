@@ -6,25 +6,27 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+
 def get_nonorm_transform(resolution):
-    nonorm_transform =  transforms.Compose(
-            [transforms.Resize((resolution, resolution), 
-                               interpolation=transforms.InterpolationMode.BILINEAR), 
-             transforms.ToTensor()])
-    return nonorm_transform
+    return transforms.Compose([
+        transforms.Resize((resolution, resolution),
+                          interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.ToTensor()
+    ])
 
 
 class FontDataset(Dataset):
-    """The dataset of font generation  
-    """
-    def __init__(self, args, phase, transforms=None, scr=False):
+    """Dataset cho font generation + SCR (intra/cross/both)."""
+    def __init__(self, args, phase, transforms=None, scr=False, scr_mode="intra", lang_mode="same"):
         super().__init__()
         self.root = args.data_root
         self.phase = phase
         self.scr = scr
+        self.scr_mode = scr_mode  # 'intra', 'cross', 'both'
+        self.lang_mode = lang_mode
         if self.scr:
             self.num_neg = args.num_neg
-        
+
         # Get Data path
         self.get_path()
         self.transforms = transforms
@@ -32,10 +34,36 @@ class FontDataset(Dataset):
 
     def get_path(self):
         self.target_images = []
-        # images with related style  
+        # Images with related style
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
-        for style in os.listdir(target_image_dir):
+
+        all_style_folders = [f for f in os.listdir(target_image_dir) if os.path.isdir(os.path.join(target_image_dir, f))]
+
+        chinese_folders = [f for f in all_style_folders if f.lower().endswith("_chinese")]
+        english_folders = [f for f in all_style_folders if f.lower().endswith("_english")]
+        if self.lang_mode == "same":
+            selected_style_folders = chinese_folders
+        elif self.lang_mode == "cross":
+            selected_style_folders = chinese_folders + english_folders
+        print(len(selected_style_folders))
+
+        # DEBUG - Đếm tổng số ảnh
+        total_images = 0
+        for folder in selected_style_folders:
+            folder_path = os.path.join(target_image_dir, folder)
+            total_images += sum(
+                1 for f in os.listdir(folder_path)
+                if os.path.isfile(os.path.join(folder_path, f))
+            )
+
+        print(f"Tổng số ảnh: {total_images}")
+
+        print(f"[FontDataset] Using {len(selected_style_folders)} folders "
+              f"({sum(f.lower().endswith('_chinese') for f in selected_style_folders)} zh, "
+              f"{sum(f.lower().endswith('_english') for f in selected_style_folders)} en)")
+        
+        for style in selected_style_folders:
             images_related_style = []
             for img in os.listdir(f"{target_image_dir}/{style}"):
                 img_path = f"{target_image_dir}/{style}/{img}"
@@ -43,60 +71,121 @@ class FontDataset(Dataset):
                 images_related_style.append(img_path)
             self.style_to_images[style] = images_related_style
 
+
+    def get_script(self, name: str):
+        if name.endswith("_chinese"):
+            return "chinese"
+        elif name.endswith("_english"):
+            return "latin"
+        else:
+            return None
+
     def __getitem__(self, index):
         target_image_path = self.target_images[index]
-        target_image_name = target_image_path.split('/')[-1]
-        style, content = target_image_name.split('.')[0].split('+')
-        
+        filename = os.path.splitext(os.path.basename(target_image_path))[0]
+
+        if "_english" in filename:
+            idx = filename.rfind("_english")
+            style = filename[:idx]
+            lang = "_english"
+            content = filename[idx + len("_english") + 1:]  # bỏ dấu "+"
+        elif "_chinese" in filename:
+            idx = filename.rfind("_chinese")
+            style = filename[:idx]
+            lang = "_chinese"
+            content = filename[idx + len("_chinese") + 1:]
+        else:
+            # fallback: không tìm thấy lang
+            style = filename
+            lang = ""
+            content = ""
+
+        # giữ dấu '+' cuối nếu có
+        if filename.endswith("+") and not content.endswith("+"):
+            content += "+"
+
+        script = self.get_script(style + lang)
+
         # Read content image
-        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.jpg"
+        content_image_path = f"{self.root}/{self.phase}/ContentImage/{content}.png"
         content_image = Image.open(content_image_path).convert('RGB')
 
-        # Random sample used for style image
-        images_related_style = self.style_to_images[style].copy()
-        images_related_style.remove(target_image_path)
-        style_image_path = random.choice(images_related_style)
-        style_image = Image.open(style_image_path).convert("RGB")
-        
         # Read target image
         target_image = Image.open(target_image_path).convert("RGB")
         nonorm_target_image = self.nonorm_transforms(target_image)
+
+        # Random sample used for style image
+        style_image_path = random.choice(self.style_to_images[style + lang])
+        style_image = Image.open(style_image_path).convert("RGB")
 
         if self.transforms is not None:
             content_image = self.transforms[0](content_image)
             style_image = self.transforms[1](style_image)
             target_image = self.transforms[2](target_image)
-        
+
         sample = {
             "content_image": content_image,
             "style_image": style_image,
             "target_image": target_image,
             "target_image_path": target_image_path,
-            "nonorm_target_image": nonorm_target_image}
-        
-        if self.scr:
-            # Get neg image from the different style of the same content
-            style_list = list(self.style_to_images.keys())
-            style_index = style_list.index(style)
-            style_list.pop(style_index)
-            choose_neg_names = []
-            for i in range(self.num_neg):
-                choose_style = random.choice(style_list)
-                choose_index = style_list.index(choose_style)
-                style_list.pop(choose_index)
-                choose_neg_name = f"{self.root}/train/TargetImage/{choose_style}/{choose_style}+{content}.jpg"
-                choose_neg_names.append(choose_neg_name)
+            "nonorm_target_image": nonorm_target_image
+        }
 
-            # Load neg_images
-            for i, neg_name in enumerate(choose_neg_names):
-                neg_image = Image.open(neg_name).convert("RGB")
+        if self.scr:
+            # === Intra Positive ===
+            if self.scr_mode in ["intra", "both"]:
+                intra_pos_path = target_image_path  # chính ground-truth
+                intra_pos_image = Image.open(intra_pos_path).convert("RGB")
                 if self.transforms is not None:
-                    neg_image = self.transforms[2](neg_image)
-                if i == 0:
-                    neg_images = neg_image[None, :, :, :]
-                else:
-                    neg_images = torch.cat([neg_images, neg_image[None, :, :, :]], dim=0)
-            sample["neg_images"] = neg_images
+                    intra_pos_image = self.transforms[2](intra_pos_image)
+                sample["intra_pos_image"] = intra_pos_image
+
+            # === Cross Positive ===
+            if self.scr_mode in ["cross", "both"]:
+                cross_style = style + ("_english" if script == "chinese" else "_chinese")
+                if cross_style in self.style_to_images:
+                    cross_pos_path = random.choice(self.style_to_images[cross_style])
+                    cross_pos_image = Image.open(cross_pos_path).convert("RGB")
+                    if self.transforms is not None:
+                        cross_pos_image = self.transforms[2](cross_pos_image)
+                    sample["cross_pos_image"] = cross_pos_image
+
+            ### TODO
+            # === Intra Negatives ===
+            if self.scr_mode in ["intra", "both"]:
+                neg_candidates_all = []
+                for neg_style in self.style_to_images:
+                    if neg_style != style + lang and neg_style.endswith(lang):
+                        neg_candidates = [p for p in self.style_to_images[neg_style]
+                                          if p.endswith("+" + content + ".png")]
+                        neg_candidates_all.extend(neg_candidates)
+
+                if len(neg_candidates_all) > 0:
+                    chosen = random.choices(neg_candidates_all, k=self.num_neg)
+                    intra_neg_images = []
+                    for neg_path in chosen:
+                        neg_image = Image.open(neg_path).convert("RGB")
+                        if self.transforms is not None:
+                            neg_image = self.transforms[2](neg_image)
+                        intra_neg_images.append(neg_image[None, :, :, :])
+                    sample["intra_neg_images"] = torch.cat(intra_neg_images, dim=0)
+
+            # === Cross Negatives ===
+            if self.scr_mode in ["cross", "both"]:
+                neg_candidates_all = []
+                for neg_style in self.style_to_images:
+                    if not neg_style.endswith(lang):  # khác script
+                        neg_candidates_all.extend(self.style_to_images[neg_style])
+
+                if len(neg_candidates_all) > 0:
+                    chosen = random.choices(neg_candidates_all, k=self.num_neg)
+                    cross_neg_images = []
+                    for neg_path in chosen:
+                        neg_image = Image.open(neg_path).convert("RGB")
+                        if self.transforms is not None:
+                            neg_image = self.transforms[2](neg_image)
+                        cross_neg_images.append(neg_image[None, :, :, :])
+                    sample["cross_neg_images"] = torch.cat(cross_neg_images, dim=0)
 
         return sample
 

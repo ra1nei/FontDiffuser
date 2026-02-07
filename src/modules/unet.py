@@ -13,6 +13,7 @@ from diffusers.utils import BaseOutput, logging
 from .embeddings import TimestepEmbedding, Timesteps
 from .unet_blocks import (DownBlock2D,
                           UNetMidMCABlock2D,
+                          SimpleMidBlock2D,
                           UpBlock2D,
                           get_down_block,
                           get_up_block)
@@ -52,10 +53,12 @@ class UNet(ModelMixin, ConfigMixin):
         content_encoder_downsample_size: int = 4,
         content_start_channel: int = 16,
         reduction: int = 32,
+        deformation_scale: float = 1.0,
     ):
         super().__init__()
-
+        is_mca_enabled = "MCADownBlock2D" in down_block_types
         self.content_encoder_downsample_size = content_encoder_downsample_size
+        self.deformation_scale = deformation_scale
 
         self.sample_size = sample_size
         time_embed_dim = block_out_channels[0] * 4
@@ -106,20 +109,34 @@ class UNet(ModelMixin, ConfigMixin):
             self.down_blocks.append(down_block)
 
         # mid
-        self.mid_block = UNetMidMCABlock2D(
-            in_channels=block_out_channels[-1],
-            temb_channels=time_embed_dim,
-            channel_attn=channel_attn,
-            resnet_eps=norm_eps,
-            resnet_act_fn=act_fn,
-            output_scale_factor=mid_block_scale_factor,
-            resnet_time_scale_shift="default",
-            cross_attention_dim=cross_attention_dim,
-            attn_num_head_channels=attention_head_dim,
-            resnet_groups=norm_num_groups,
-            content_channel=content_start_channel*(2**(content_encoder_downsample_size - 1)),
-            reduction=reduction,
-        )
+        if not is_mca_enabled:
+            print("Detected Standard Blocks (Ablation) -> Using SimpleMidBlock2D")
+            self.mid_block = SimpleMidBlock2D(
+                in_channels=block_out_channels[-1],
+                temb_channels=time_embed_dim,
+                resnet_eps=norm_eps,
+                resnet_act_fn=act_fn,
+                output_scale_factor=mid_block_scale_factor,
+                resnet_time_scale_shift="default",
+                resnet_groups=norm_num_groups,
+                # Simple block không cần các tham số attention/content_channel
+            )
+        else:
+            print("Detected MCA Blocks -> Using UNetMidMCABlock2D")
+            self.mid_block = UNetMidMCABlock2D(
+                in_channels=block_out_channels[-1],
+                temb_channels=time_embed_dim,
+                channel_attn=channel_attn,
+                resnet_eps=norm_eps,
+                resnet_act_fn=act_fn,
+                output_scale_factor=mid_block_scale_factor,
+                resnet_time_scale_shift="default",
+                cross_attention_dim=cross_attention_dim,
+                attn_num_head_channels=attention_head_dim,
+                resnet_groups=norm_num_groups,
+                content_channel=content_start_channel*(2**(content_encoder_downsample_size - 1)),
+                reduction=reduction,
+            )
 
         # count how many layers upsample the images
         self.num_upsamplers = 0
@@ -158,6 +175,7 @@ class UNet(ModelMixin, ConfigMixin):
                 cross_attention_dim=cross_attention_dim,
                 attn_num_head_channels=attention_head_dim,
                 upblock_index=i,
+                deformation_scale=deformation_scale,
             )
             self.up_blocks.append(up_block)
             prev_output_channel = output_channel

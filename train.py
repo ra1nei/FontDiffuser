@@ -27,13 +27,17 @@ from utils import (save_args_to_yaml,
                    x0_from_epsilon, 
                    reNormalize_img, 
                    normalize_mean_std)
-
+from src.modules.unet_blocks import StyleRSIUpBlock2D
 
 logger = get_logger(__name__)
 
 def get_args():
     parser = get_parser()
+
+    parser.add_argument("--disable_scr_augment", action="store_true", help="Tắt augmentation (RandomResizedCrop) trong module SCR")
+
     args = parser.parse_args()
+
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
@@ -44,19 +48,52 @@ def get_args():
 
     return args
 
+def save_checkpoint(save_dir, model, optimizer, lr_scheduler, global_step):
+    os.makedirs(save_dir, exist_ok=True)
+    # save model parts
+    torch.save(model.unet.state_dict(), f"{save_dir}/unet.pth")
+    torch.save(model.style_encoder.state_dict(), f"{save_dir}/style_encoder.pth")
+    torch.save(model.content_encoder.state_dict(), f"{save_dir}/content_encoder.pth")
+    # save optimizer & scheduler
+    torch.save({
+        "optimizer": optimizer.state_dict(),
+        "lr_scheduler": lr_scheduler.state_dict(),
+        "global_step": global_step,
+    }, f"{save_dir}/training_state.pth")
+    logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Saved checkpoint to {save_dir}")
+
+def load_checkpoint(load_dir, model, optimizer=None, lr_scheduler=None):
+    # Load model parts
+    model.unet.load_state_dict(torch.load(f"{load_dir}/unet.pth"))
+    model.style_encoder.load_state_dict(torch.load(f"{load_dir}/style_encoder.pth"))
+    model.content_encoder.load_state_dict(torch.load(f"{load_dir}/content_encoder.pth"))
+    global_step = 0
+    if optimizer is not None and lr_scheduler is not None:
+        state = torch.load(f"{load_dir}/training_state.pth", map_location="cpu")
+        optimizer.load_state_dict(state["optimizer"])
+        lr_scheduler.load_state_dict(state["lr_scheduler"])
+        global_step = state.get("global_step", 0)
+        logging.info(f"Resumed training from step {global_step}")
+    return global_step
 
 def main():
-
     args = get_args()
-
+    
+    ### DEBUG
+    print(args)
+    print(f"[Training Setup] Deformation Scale set to: {args.deformation_scale}")
+    if args.deformation_scale == 0.0:
+        print("-> Deformation is DISABLED (Standard Conv behavior).")
+    
     logging_dir = f"{args.output_dir}/{args.logging_dir}"
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision=args.mixed_precision,
         log_with=args.report_to,
-        project_dir=logging_dir)
-
+        project_dir=logging_dir
+    )
+    
     if accelerator.is_main_process:
         os.makedirs(args.output_dir, exist_ok=True)
     
@@ -65,15 +102,17 @@ def main():
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO)
 
-    # Ser training seed
+    # Set training seed
     if args.seed is not None:
         set_seed(args.seed)
-
-    # Load model and noise_scheduler
+    
+    # Load model
     unet = build_unet(args=args)
+    # Build encoders & noise_scheduler
     style_encoder = build_style_encoder(args=args)
     content_encoder = build_content_encoder(args=args)
     noise_scheduler = build_ddpm_scheduler(args)
+
     if args.phase_2:
         unet.load_state_dict(torch.load(f"{args.phase_1_ckpt_dir}/unet.pth"))
         style_encoder.load_state_dict(torch.load(f"{args.phase_1_ckpt_dir}/style_encoder.pth"))
@@ -82,43 +121,62 @@ def main():
     model = FontDiffuserModel(
         unet=unet,
         style_encoder=style_encoder,
-        content_encoder=content_encoder)
+        content_encoder=content_encoder
+    )
 
-    # Build content perceptaual Loss
+    # Build Content Perceptaual Loss
     perceptual_loss = ContentPerceptualLoss()
 
     # Load SCR module for supervision
     if args.phase_2:
         scr = build_scr(args=args)
-        scr.load_state_dict(torch.load(args.scr_ckpt_path))
+
+        ckpt = torch.load(args.scr_ckpt_path, map_location="cpu")
+        if isinstance(ckpt, dict) and "model_state" in ckpt:
+            missing, unexpected = scr.load_state_dict(ckpt["model_state"], strict=False)
+            print(f"[INFO] Loaded SCR model_state from checkpoint {args.scr_ckpt_path}")
+            if missing:
+                print(f"[WARN] Missing keys in SCR: {missing}")
+            if unexpected:
+                print(f"[WARN] Unexpected keys in SCR: {unexpected}")
+        else:
+            # fallback: assume checkpoint is already a pure state_dict
+            scr.load_state_dict(ckpt)
+
         scr.requires_grad_(False)
 
     # Load the datasets
-    content_transforms = transforms.Compose(
-        [transforms.Resize(args.content_image_size, 
-                           interpolation=transforms.InterpolationMode.BILINEAR),
-         transforms.ToTensor(),
-         transforms.Normalize([0.5], [0.5])])
-    style_transforms = transforms.Compose(
-        [transforms.Resize(args.style_image_size, 
-                           interpolation=transforms.InterpolationMode.BILINEAR),
-         transforms.ToTensor(),
-         transforms.Normalize([0.5], [0.5])])
-    target_transforms = transforms.Compose(
-        [transforms.Resize((args.resolution, args.resolution), 
-                           interpolation=transforms.InterpolationMode.BILINEAR),
-         transforms.ToTensor(),
-         transforms.Normalize([0.5], [0.5])])
+    content_transforms = transforms.Compose([
+        transforms.Resize(args.content_image_size, interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])
+    ])
+    style_transforms = transforms.Compose([
+        transforms.Resize(args.style_image_size, interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])
+    ])
+    target_transforms = transforms.Compose([
+        transforms.Resize((args.resolution, args.resolution), interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])
+    ])
+    
     train_font_dataset = FontDataset(
         args=args,
-        phase='train', 
-        transforms=[
-            content_transforms, 
-            style_transforms, 
-            target_transforms],
-        scr=args.phase_2)
+        phase='train',
+        transforms=[content_transforms, style_transforms, target_transforms],
+        scr=args.phase_2,
+        scr_mode=args.scr_mode,
+        lang_mode=args.lang_mode
+    )
+    ### DEBUG
+    print(len(train_font_dataset))
+    ###
+    
     train_dataloader = torch.utils.data.DataLoader(
-        train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN())
+        train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN()
+    )
     
     # Build optimizer and learning rate
     if args.scale_lr:
@@ -129,34 +187,41 @@ def main():
         lr=args.learning_rate,
         betas=(args.adam_beta1, args.adam_beta2),
         weight_decay=args.adam_weight_decay,
-        eps=args.adam_epsilon)
+        eps=args.adam_epsilon
+    )
     lr_scheduler = get_scheduler(
         args.lr_scheduler,
         optimizer=optimizer,
         num_warmup_steps=args.lr_warmup_steps * args.gradient_accumulation_steps,
-        num_training_steps=args.max_train_steps * args.gradient_accumulation_steps,)
-
+        num_training_steps=args.max_train_steps * args.gradient_accumulation_steps,
+    )
+    
     # Accelerate preparation
     model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-        model, optimizer, train_dataloader, lr_scheduler)
-    ## move scr module to the target deivces
+        model, optimizer, train_dataloader, lr_scheduler
+    )
+
+    # Move SCR module to the target deivces
     if args.phase_2:
         scr = scr.to(accelerator.device)
 
-    # The trackers initializes automatically on the main process.
+    # The trackers initializes automatically on the main process
     if accelerator.is_main_process:
         accelerator.init_trackers(args.experience_name)
         save_args_to_yaml(args=args, output_file=f"{args.output_dir}/{args.experience_name}_config.yaml")
-
-    # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
-    progress_bar.set_description("Steps")
 
     # Convert to the training epoch
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
     num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
 
     global_step = 0
+    if args.resume_ckpt:
+        global_step = load_checkpoint(args.resume_ckpt, model, optimizer, lr_scheduler)
+
+    # Only show the progress bar once on each machine
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, initial=global_step)
+    progress_bar.set_description("Steps")
+
     for epoch in range(num_train_epochs):
         train_loss = 0.0
         for step, samples in enumerate(train_dataloader):
@@ -165,7 +230,7 @@ def main():
             style_images = samples["style_image"]
             target_images = samples["target_image"]
             nonorm_target_images = samples["nonorm_target_image"]
-            
+
             with accelerator.accumulate(model):
                 # Sample noise that we'll add to the samples
                 noise = torch.randn_like(target_images)
@@ -212,19 +277,54 @@ def main():
                 loss = diff_loss + \
                         args.perceptual_coefficient * percep_loss + \
                             args.offset_coefficient * offset_loss
-                
+
                 if args.phase_2:
-                    neg_images = samples["neg_images"]
-                    # sc loss
-                    sample_style_embeddings, pos_style_embeddings, neg_style_embeddings = scr(
-                        pred_original_sample_norm, 
-                        target_images, 
-                        neg_images, 
-                        nce_layers=args.nce_layers)
-                    sc_loss = scr.calculate_nce_loss(
-                        sample_s=sample_style_embeddings,
-                        pos_s=pos_style_embeddings,
-                        neg_s=neg_style_embeddings)
+                    (sample_style_embeddings,
+                    intra_pos_embeddings,
+                    cross_pos_embeddings,
+                    intra_neg_embeddings,
+                    cross_neg_embeddings) = scr(
+                        sample_imgs=pred_original_sample_norm,
+                        intra_pos_imgs=samples.get("intra_pos_image"),
+                        cross_pos_imgs=samples.get("cross_pos_image"),
+                        intra_neg_imgs=samples.get("intra_neg_images"),
+                        cross_neg_imgs=samples.get("cross_neg_images"),
+                        nce_layers=args.nce_layers
+                    )
+
+                    if args.scr_mode == "intra":
+                        intra_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            intra_pos_s=intra_pos_embeddings,
+                            intra_neg_s=intra_neg_embeddings
+                        )
+                        sc_loss = intra_loss
+
+                    elif args.scr_mode == "cross":
+                        cross_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            cross_pos_s=cross_pos_embeddings,
+                            cross_neg_s=cross_neg_embeddings
+                        )
+                        sc_loss = cross_loss
+
+                    elif args.scr_mode == "both":
+                        intra_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            intra_pos_s=intra_pos_embeddings,
+                            intra_neg_s=intra_neg_embeddings
+                        )
+                        cross_loss = scr.calculate_nce_loss(
+                            sample_s=sample_style_embeddings,
+                            cross_pos_s=cross_pos_embeddings,
+                            cross_neg_s=cross_neg_embeddings
+                        )
+                        sc_loss = args.alpha_intra * intra_loss + args.beta_cross * cross_loss
+
+                    else:
+                        raise ValueError(f"Unsupported scr_mode: {args.scr_mode}")
+
+                    # Thêm SCR vào tổng loss
                     loss += args.sc_coefficient * sc_loss
 
                 # Gather the losses across all processes for logging (if we use distributed training).
@@ -246,20 +346,21 @@ def main():
                 accelerator.log({"train_loss": train_loss}, step=global_step)
                 train_loss = 0.0
 
-                if accelerator.is_main_process:
-                    if global_step % args.ckpt_interval == 0:
-                        save_dir = f"{args.output_dir}/global_step_{global_step}"
-                        os.makedirs(save_dir, exist_ok=True)
-                        torch.save(model.unet.state_dict(), f"{save_dir}/unet.pth")
-                        torch.save(model.style_encoder.state_dict(), f"{save_dir}/style_encoder.pth")
-                        torch.save(model.content_encoder.state_dict(), f"{save_dir}/content_encoder.pth")
-                        torch.save(model, f"{save_dir}/total_model.pth")
-                        logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))}] Save the checkpoint on global step {global_step}")
-                        print("Save the checkpoint on global step {}".format(global_step))
+                if accelerator.is_main_process and global_step % args.ckpt_interval == 0:
+                    save_dir = f"{args.output_dir}/global_step_{global_step}"
+                    os.makedirs(save_dir, exist_ok=True)
+                    torch.save(model.unet.state_dict(), f"{save_dir}/unet.pth")
+                    torch.save(model.style_encoder.state_dict(), f"{save_dir}/style_encoder.pth")
+                    torch.save(model.content_encoder.state_dict(), f"{save_dir}/content_encoder.pth")
+                    torch.save(model, f"{save_dir}/total_model.pth")
+                    logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Save checkpoint step {global_step}")
+                    save_checkpoint(f"{args.output_dir}/global_step_{global_step}",
+                                    model, optimizer, lr_scheduler, global_step)
+                    print("Save checkpoint on step {}".format(global_step))
 
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             if global_step % args.log_interval == 0:
-                logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))}] Global Step {global_step} => train_loss = {loss}")
+                logging.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())}] Step {global_step} => train_loss = {loss}")
             progress_bar.set_postfix(**logs)
             
             # Quit

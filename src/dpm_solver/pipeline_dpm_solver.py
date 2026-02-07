@@ -56,6 +56,8 @@ class FontDiffuserDPMPipeline():
         correcting_x0_fn=None,
         generator=None,
     ):
+        if isinstance(dm_size, int):
+            dm_size = (dm_size, dm_size)
         model_kwargs = {}
         model_kwargs["version"] = self.version
         model_kwargs["content_encoder_downsample_size"] = content_encoder_downsample_size
@@ -100,18 +102,45 @@ class FontDiffuserDPMPipeline():
             generator=generator,
         )
         x_T = x_T.to(self.model.device)
+        # DEBUG
+        print(f"DEBUG PIPELINE: Calling sample with return_intermediate=True")
+        try:
+            sample_out = dpm_solver.sample(
+                x=x_T,
+                steps=num_inference_step,
+                order=order,
+                skip_type=skip_type,
+                method=method,
+                return_intermediate=True
+            ) 
+        except TypeError:
+             # Fallback nếu file dpm_solver chưa sửa xong
+            print("Warning: dpm_solver.sample chưa hỗ trợ return_intermediate. Đang chạy chế độ cũ.")
+            sample_out = dpm_solver.sample(
+                x=x_T, steps=num_inference_step, order=order, skip_type=skip_type, method=method
+            )
+        
+        intermediates = []
+        
+        # Kiểm tra xem kết quả trả về là 1 biến hay 2 biến
+        if isinstance(sample_out, tuple):
+            x_sample, intermediates_raw = sample_out
+        else:
+            x_sample = sample_out
+            intermediates_raw = []
 
-        x_sample = dpm_solver.sample(
-            x=x_T,
-            steps=num_inference_step,
-            order=order,
-            skip_type=skip_type,
-            method=method,
-        )
-
+        # Xử lý ảnh cuối cùng (Final Image)
         x_sample = (x_sample / 2 + 0.5).clamp(0, 1)
         x_sample = x_sample.cpu().permute(0, 2, 3, 1).numpy()
-    
         x_images = self.numpy_to_pil(x_sample)
 
-        return x_images
+        # Xử lý các ảnh trung gian (Intermediate Images) -> Để làm GIF
+        intermediates_pil = []
+        for x_t in intermediates_raw:
+            # Quy trình y hệt ảnh cuối: Denormalize -> Permute -> Numpy -> PIL
+            x_t = (x_t / 2 + 0.5).clamp(0, 1)
+            x_t = x_t.cpu().permute(0, 2, 3, 1).numpy()
+            # numpy_to_pil trả về list, ta lấy phần tử đầu tiên (batch=1)
+            intermediates_pil.append(self.numpy_to_pil(x_t)[0])
+
+        return x_images, intermediates_pil

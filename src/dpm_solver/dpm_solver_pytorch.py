@@ -1183,6 +1183,9 @@ class DPM_Solver:
             x_end: A pytorch tensor. The approximated solution at time `t_end`.
 
         """
+        # DEBUG
+        print(f"DEBUG SOLVER: Start Sample. return_intermediate = {return_intermediate}, method = {method}")
+
         t_0 = 1. / self.noise_schedule.total_N if t_end is None else t_end
         t_T = self.noise_schedule.T if t_start is None else t_start
         assert t_0 > 0 and t_T > 0, "Time range needs to be greater than 0. For discrete-time DPMs, it needs to be in [1 / N, 1], where N is the length of betas array"
@@ -1208,6 +1211,7 @@ class DPM_Solver:
                     x = self.correcting_xt_fn(x, t, step)
                 if return_intermediate:
                     intermediates.append(x)
+                    print(f"DEBUG SOLVER: Appended Step {step}")
                 # Init the first `order` values by lower order multistep DPM-Solver.
                 for step in range(1, order):
                     t = timesteps[step]
@@ -1231,6 +1235,7 @@ class DPM_Solver:
                         x = self.correcting_xt_fn(x, t, step)
                     if return_intermediate:
                         intermediates.append(x)
+                        print(f"DEBUG SOLVER: Appended Step {step}")
                     for i in range(order - 1):
                         t_prev_list[i] = t_prev_list[i + 1]
                         model_prev_list[i] = model_prev_list[i + 1]
