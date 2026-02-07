@@ -8,7 +8,7 @@ from torchvision import transforms
 from skimage.metrics import structural_similarity as ssim
 from torchmetrics.image.fid import FrechetInceptionDistance
 
-# --- Utility functions ---
+# Utility functions
 def load_image(path):
     img = Image.open(path).convert("RGB")
     transform = transforms.Compose([
@@ -24,7 +24,7 @@ def ssim_score(img1, img2):
     img2 = img2.squeeze().permute(1, 2, 0).numpy()
     return ssim(img1, img2, channel_axis=2, data_range=1.0)
 
-# --- Main evaluation ---
+# Main evaluation
 def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.is_available() else 'cpu'):
     files = os.listdir(folder_path)
     generated_files = [f for f in files if "|generated" in f]
@@ -54,14 +54,14 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
         gen_imgs.append(gen_img)
         gt_imgs.append(gt_img)
 
-        # --- Per-image metrics ---
+        # Per-image metrics
         l1_val = l1_loss(gen_img, gt_img)
         ssim_val = ssim_score(gen_img.cpu(), gt_img.cpu())
         lpips_val = lpips_model(gen_img, gt_img).item()
 
         results.append((base_name, l1_val, ssim_val, lpips_val))
 
-    # --- Compute FID (global) ---
+    # Compute FID (global)
     for img in gen_imgs:
         fid_metric.update((img * 255).byte(), real=False)
     for img in gt_imgs:
@@ -70,7 +70,7 @@ def evaluate_folder(folder_path, output_path=None, device='cuda' if torch.cuda.i
     print("Gen:", len(gen_imgs), "GT:", len(gt_imgs))
     fid_val = fid_metric.compute().item()
 
-    # --- Save results ---
+    # Save results
     if output_path is None:
         output_path = os.path.join(folder_path, "evaluation_results.txt")
 

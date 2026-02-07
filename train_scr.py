@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--beta_cross", type=float, default=0.7)
     parser.add_argument("--num_neg", type=int, default=4)
 
-    # Logging & checkpoint
+    # Logging & Checkpoint
     parser.add_argument("--save_dir", type=str, default="./scr_checkpoints")
     parser.add_argument("--resume_ckpt", type=str, default=None)
     parser.add_argument("--ckpt_interval", type=int, default=20000)
@@ -55,13 +55,11 @@ def get_transforms(resolution, augment=False):
     transform_list = []
     
     if augment:
-        # Augmentation: Random Resized Crop
-        # Kỹ thuật này đồng thời thực hiện Random Size (Scale) và Random Crop
         transform_list.append(
             transforms.RandomResizedCrop(
                 (resolution, resolution),
-                scale=(0.80, 1.0),  # Lấy ngẫu nhiên vùng ảnh từ 80% đến 100% (Zoom in nhẹ)
-                ratio=(0.8, 1.2),   # Giữ tỷ lệ khung hình gần vuông (tránh làm méo chữ quá nhiều)
+                scale=(0.80, 1.0),
+                ratio=(0.8, 1.2),
                 interpolation=transforms.InterpolationMode.BILINEAR,
                 antialias=True
             )
@@ -129,7 +127,7 @@ def train():
         drop_last=True
     )
 
-    # model + optimizer
+    # Model + Optimizer
     scr_model = build_scr(args)
     optimizer = optim.Adam(
         list(scr_model.StyleFeatExtractor.parameters()) + list(scr_model.StyleFeatProjector.parameters()),

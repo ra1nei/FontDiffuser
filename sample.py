@@ -137,8 +137,6 @@ def save_real_process_gif(intermediate_tensors, save_path):
     frames = []
     print(f"Generating Real GIF from {len(intermediate_tensors)} steps...")
     for tensor in intermediate_tensors:
-        # Tensor thường có shape [1, 3, H, W] và range [-1, 1] hoặc [0, 1] tùy cách bạn return ở src
-        # Giả sử bạn đã normalize về [0, 1] trong src, nếu chưa thì phải làm ở đây
         if tensor.min() < 0:
             tensor = (tensor / 2 + 0.5).clamp(0, 1)
             
@@ -146,7 +144,6 @@ def save_real_process_gif(intermediate_tensors, save_path):
         img_np = (img_np * 255).astype(np.uint8)
         frames.append(Image.fromarray(img_np))
     
-    # Lưu GIF
     imageio.mimsave(save_path, frames, duration=100, loop=0)
     print(f"Saved Real GIF to {save_path}")
     return save_path

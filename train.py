@@ -79,8 +79,6 @@ def load_checkpoint(load_dir, model, optimizer=None, lr_scheduler=None):
 def main():
     args = get_args()
     
-    ### DEBUG
-    print(args)
     print(f"[Training Setup] Deformation Scale set to: {args.deformation_scale}")
     if args.deformation_scale == 0.0:
         print("-> Deformation is DISABLED (Standard Conv behavior).")
@@ -170,9 +168,6 @@ def main():
         scr_mode=args.scr_mode,
         lang_mode=args.lang_mode
     )
-    ### DEBUG
-    print(len(train_font_dataset))
-    ###
     
     train_dataloader = torch.utils.data.DataLoader(
         train_font_dataset, shuffle=True, batch_size=args.train_batch_size, collate_fn=CollateFN()

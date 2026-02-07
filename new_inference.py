@@ -83,7 +83,6 @@ def batch_sampling(args):
 
     if args.direction == "e2c":
         print("Mode: English to Chinese (e2c)")
-        # Lấy danh sách ảnh đích (Chinese Target)
         chinese_images = collect_images(args.chinese_dir)
         print(f"Tổng số ảnh Chinese targets: {len(chinese_images)}")
 
@@ -91,10 +90,8 @@ def batch_sampling(args):
             font_name = os.path.basename(os.path.dirname(chi_path))
             glyph_name = os.path.splitext(os.path.basename(chi_path))[0]
 
-            # CONTENT: Ảnh gốc (Standard font)
             content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
             
-            # STYLE: Lấy từ english_dir
             style_dir = os.path.join(args.english_dir, font_name)
             
             if args.random_style:
@@ -132,11 +129,9 @@ def batch_sampling(args):
         print("Mode: Chinese to English (c2e)")
         print(f"Phase: {args.phase}")
         
-        # 1. Thu thập danh sách ảnh Targets (English)
         english_images = collect_images(args.english_dir)
         print(f"Tổng số ảnh English targets: {len(english_images)}")
 
-        # 2. XÁC ĐỊNH NGUỒN LẤY STYLE
         style_search_root = args.chinese_dir 
         if args.phase == "test_unknown_content":
             if not args.chinese_train_dir:
@@ -146,13 +141,11 @@ def batch_sampling(args):
         else:
             print(f"Keep Style Source -> Test Dir: {args.chinese_dir}")
 
-        # 3. Thu thập DANH SÁCH GLYPH MẪU (Dùng SET để tìm giao nhanh)
         candidate_glyph_set = set()
         
         if args.complexity == "all":
             try:
                 first_font = os.listdir(style_search_root)[0]
-                # Lấy toàn bộ tên file trong folder font đầu tiên làm mẫu
                 candidate_glyph_set = set(os.listdir(os.path.join(style_search_root, first_font)))
             except:
                 print("Không tìm thấy font nào trong style root")
@@ -165,7 +158,6 @@ def batch_sampling(args):
             ref_folder = os.path.join(args.complexity_root, complexity_folder_map[args.complexity])
             
             if os.path.exists(ref_folder):
-                # Chỉ lấy file ảnh
                 candidate_glyph_set = set([f for f in os.listdir(ref_folder) if f.endswith(('.png', '.jpg', '.jpeg'))])
         
         print(f"Tìm thấy {len(candidate_glyph_set)} glyph mẫu cho độ khó '{args.complexity}'")
@@ -175,46 +167,35 @@ def batch_sampling(args):
 
         font_valid_glyphs_cache = {}
 
-        # 4. Duyệt qua từng ảnh Target (English)
         for eng_path in english_images:
-            font_name = os.path.basename(os.path.dirname(eng_path)) # Tên font (VD: Arial)
-            glyph_name = os.path.splitext(os.path.basename(eng_path))[0] # Tên chữ cái (VD: A)
+            font_name = os.path.basename(os.path.dirname(eng_path))
+            glyph_name = os.path.splitext(os.path.basename(eng_path))[0]
 
-            # --- SKIP UPPERCASE FOR C2E ---
             if glyph_name.isupper():
                 continue
 
-            # CONTENT: Ảnh gốc English
             content_path = os.path.join(args.source_dir, f"{glyph_name}.png")
             
-            # STYLE DIR: Thư mục chứa font Chinese tương ứng
             chinese_font_dir = os.path.join(style_search_root, font_name)
             
             if not os.path.exists(chinese_font_dir):
                 continue
             
-            # Kiểm tra xem font này đã được quét chưa
             if font_name not in font_valid_glyphs_cache:
                 try:
-                    # Lấy danh sách thực tế các file đang có trong folder font này
                     actual_files_in_font = set(os.listdir(chinese_font_dir))
                     
-                    # Phép GIAO (Intersection): Lấy những file VỪA có trong mẫu độ khó, VỪA có thực tế
                     valid_candidates = list(candidate_glyph_set.intersection(actual_files_in_font))
                     
-                    # Lưu vào cache
                     font_valid_glyphs_cache[font_name] = valid_candidates
                 except OSError:
                     font_valid_glyphs_cache[font_name] = []
 
-            # Lấy danh sách ứng viên từ cache
             valid_candidates = font_valid_glyphs_cache[font_name]
 
-            # Nếu danh sách rỗng (tức là font này không có chữ nào thuộc độ khó Easy/Medium/Hard đó)
             if not valid_candidates:
                 continue
 
-            # CHỌN RANDOM (Đảm bảo 100% file tồn tại)
             style_filename = random.choice(valid_candidates)
             style_path = os.path.join(chinese_font_dir, style_filename)
 
